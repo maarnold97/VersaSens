@@ -15,20 +15,63 @@
 #include "ADS1298.h"
 #include "MAX30001.h"
 #include "versa_api.h"
-
-uint16_t data_read[1];
-
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/disk_access.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
 #include <ff.h>
+#include <nrfx_spis.h>
 
 
-char data_write_FS[12] = "Hello World!";
+#define SPIS_INST_IDX 0
+#define SCK_PIN_SLAVE 4
+#define MOSI_PIN_SLAVE 0
+#define MISO_PIN_SLAVE 34
+#define CSN_PIN_SLAVE 6
+
+
+/** @brief Symbol specifying message to be sent via SPIS data transfer. */
+#define MSG_TO_SEND_SLAVE "Test message"
+
+/** @brief Transmit buffer initialized with the specified message ( @ref MSG_TO_SEND_SLAVE ). */
+static uint8_t m_tx_buffer_slave[100] = MSG_TO_SEND_SLAVE;
+
+/** @brief Receive buffer defined with the size to store specified message ( @ref MSG_TO_SEND_MASTER ). */
+static uint8_t m_rx_buffer_slave[100] = MSG_TO_SEND_SLAVE;
+
+
+LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
+
+nrfx_spis_t spis_inst = NRFX_SPIS_INSTANCE(SPIS_INST_IDX);
+
+/**
+ * @brief Function for handling SPIS driver events.
+ *
+ * @param[in] p_event   Pointer to the SPIS driver event.
+ * @param[in] p_context Pointer to the context passed from the driver.
+ */
+static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
+{
+    if (p_event->evt_type == NRFX_SPIS_XFER_DONE)
+    {
+        char * p_msg = p_context;
+        LOG_INF("SPIS finished. Context passed to the handler: >%s<", p_msg);
+        LOG_INF("SPIS rx length: %d", p_event->rx_amount);
+        LOG_INF("SPIS rx buffer: %s", m_rx_buffer_slave);
+        nrfx_spis_buffers_set(&spis_inst,
+                              m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
+                              m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+    }
+}
+
 
 int main(void)
 {
+    nrf_gpio_pin_control_select(0, NRF_GPIO_PIN_SEL_APP);
+    nrf_gpio_pin_control_select(1, NRF_GPIO_PIN_SEL_APP);
+    nrf_gpio_cfg_output(START_PIN);
+    nrf_gpio_pin_set(START_PIN);
+    
     versa_init();
     // enable_auto_connect();
     versa_config();
@@ -36,84 +79,32 @@ int main(void)
     versa_start_led_thread();
     versa_start_mode_thread();
 
-    // nrf_gpio_cfg_output(45);
-    // nrf_gpio_pin_clear(45);
+    nrfx_err_t status;
+    (void)status;
 
-    // start_ble();
-    // k_sleep(K_MSEC(1000));
-    // printk("BLE started\n");
-    // twim_inst_init();
-    // k_sleep(K_MSEC(1000));
-    // printk("TWIM initialized\n");
-    // MAX77658_init();
+    // nrfx_spis_t spis_inst = NRFX_SPIS_INSTANCE(SPIS_INST_IDX);
+    nrfx_spis_config_t spis_config = NRFX_SPIS_DEFAULT_CONFIG(SCK_PIN_SLAVE,
+                                                              MOSI_PIN_SLAVE,
+                                                              MISO_PIN_SLAVE,
+                                                              CSN_PIN_SLAVE);
+    spis_config.mode = NRF_SPIS_MODE_0;
 
-    // storage_init();
-    // k_sleep(K_MSEC(500));
-    // erase_file();
-    // k_sleep(K_MSEC(500));
+    nrfx_spis_uninit(&spis_inst);
 
-    // // usb_enable(NULL);
-    
-    // bno086_reset();
-    // bno086_init();
+    void * p_context = "Some context";
+    status = nrfx_spis_init(&spis_inst, &spis_config, spis_handler, p_context);
+    NRFX_ASSERT(status == NRFX_SUCCESS);
 
-    // k_sleep(K_MSEC(1000));
+    IRQ_DIRECT_CONNECT(NRFX_IRQ_NUMBER_GET(NRF_SPIS_INST_GET(SPIS_INST_IDX)), IRQ_PRIO_LOWEST,
+                       NRFX_SPIS_INST_HANDLER_GET(SPIS_INST_IDX), 0);
 
-    // MAX77658_write_8bit(REG_CNFG_SBB1_A_ADDR, 0x34);  // 1.8V
-    // MAX77658_write_8bit(REG_CNFG_SBB1_B_ADDR, 0b00000100);
-    // MAX77658_write_8bit(REG_CNFG_SBB2_B_ADDR, 0b00000000);
-    // MAX77658_write_8bit(REG_CNFG_SBB2_A_ADDR, 0x70);  // 3.3V
-
-    // ADS1298_init();
-    // k_sleep(K_MSEC(100));
-    // ADS1298_config();
-
-    // storage_open_file(STORAGE_CREATE);
-    // ADS1298_init_interrupt();
-    // nrf_gpio_cfg_output(45);
-    // nrf_gpio_pin_set(45);
-    // ADS1298_start_thread();
-    // bno086_start_stream();
-
-    // versa_sensor_start();
-
-    // k_sleep(K_SECONDS(30));
-
-    // versa_sensor_stop();    
-
-    // storage_close_file();
-    // ADS1298_stop_thread();
-    // bno086_stop_stream();
-
-    // MAX30001_init();
-    // k_sleep(K_MSEC(100));
-
-    // storage_open_file(STORAGE_CREATE);
-    // MAX30001_start_thread();
-
-    // k_sleep(K_SECONDS(30));
-
-    // MAX30001_stop_thread();
-    // storage_close_file();
-
-    data_read[0] = 0x0000;
+    status = nrfx_spis_buffers_set(&spis_inst,
+                                   m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
+                                   m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+    NRFX_ASSERT(status == NRFX_SUCCESS);
 
     while (1)
     {
         k_sleep(K_MSEC(1000));
-        // MAX77658_read_16bit(REG_RepSOC_ADDR, data_read, 1);
-        // MAX77658_read_16bit(REG_Temp_ADDR, data_read, 1);
-        // MAX77658_read_16bit(REG_Config_ADDR, data_read, 1);
-        // data_read[0] = 0xFFFF;
-        // MAX77658_read_8bit(REG_CNFG_SBB1_A_ADDR, data_read);
-        // k_sleep(K_MSEC(100));
-        // set_battery_data(data_read);
-
-        // k_sleep(K_MSEC(1000));
-        // data_read[0] = 0xFFFF;
-        // MAX77658_read_16bit(REG_RepSOC_ADDR, data_read, 1);
-        // set_battery_data(data_read); 
-        // MAX77658_read_16bit(REG_Temp_ADDR, data_read, 1);
-        // receive_sensor_data(data_read, 2);
     }
 }
