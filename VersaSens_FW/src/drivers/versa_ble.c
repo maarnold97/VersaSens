@@ -122,16 +122,46 @@ static void start_advertising_coded(struct k_work *work);
  * @param offset : offset
  * @param flags : flags
  * 
- * @retval None
+ * @retval ssize_t : number of bytes read
  */
 static ssize_t read_status(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 			    const void *buf, uint16_t len, uint16_t offset, uint8_t flags);
+
+/*
+ * @brief Function to write the command characteristic
+ * 
+ * @param conn : connection structure
+ * @param attr : attribute structure
+ * @param buf : buffer
+ * @param len : length
+ * @param offset : offset
+ * @param flags : flags
+ * 
+ * @retval ssize_t : number of bytes written
+ */
+static ssize_t write_cmd(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			 const void *buf, uint16_t len, uint16_t offset, uint8_t flags);
+
+/*
+ * @brief Function to indicate the command characteristic
+ * 
+ * @param conn : connection structure
+ * @param params : indicate parameters
+ * @param err : error
+ * 
+ * @retval None
+ */
+static void indicate_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
+			uint8_t err);
 
 /****************************************************************************/
 /**                                                                        **/
 /*                           EXPORTED VARIABLES                             */
 /**                                                                        **/
 /****************************************************************************/
+
+bool BLE_overwrite = false;
+uint8_t BLE_cmd = BLE_CMD_MODE_IDLE;
 
 /****************************************************************************/
 /**                                                                        **/
@@ -149,6 +179,9 @@ BT_GATT_SERVICE_DEFINE(TEST, BT_GATT_PRIMARY_SERVICE(BT_UUID_DECLARE_128(BT_UUID
 						BT_GATT_PERM_WRITE, NULL, NULL, NULL),
 	BT_GATT_CHARACTERISTIC(BT_UUID_DECLARE_128(BT_UUID_CUSTOM_CHARA_STATUS), BT_GATT_CHRC_READ,
 						BT_GATT_PERM_READ | BT_GATT_PERM_WRITE, read_status, NULL, NULL),
+	BT_GATT_CHARACTERISTIC(BT_UUID_DECLARE_128(BT_UUID_CUSTOM_CHARA_CMD), BT_GATT_CHRC_WRITE | BT_GATT_CHRC_INDICATE,
+						BT_GATT_PERM_WRITE | BT_GATT_PERM_READ, NULL, write_cmd, NULL),
+	BT_GATT_CCC(NULL, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 );
 
 K_FIFO_DEFINE(sensor_fifo);
@@ -160,6 +193,11 @@ static struct bt_gatt_exchange_params exchange_params;
 bool stream_data = false;
 
 uint8_t status[1] = {0x00};
+
+// indicate parameters
+struct bt_gatt_indicate_params indicate_params;
+// indicate response
+uint8_t response;
 
 /****************************************************************************/
 /**                                                                        **/
@@ -275,21 +313,6 @@ static int create_advertising_coded(void)
 	}
 
 	return 0;
-}
-
-/****************************************************************************/
-/****************************************************************************/
-
-static void hrs_notify(void)
-{
-	static uint8_t heartrate = 100;
-
-	heartrate++;
-	if (heartrate == 160) {
-		heartrate = 100;
-	}
-
-	bt_hrs_notify(heartrate);
 }
 
 /****************************************************************************/
@@ -428,6 +451,53 @@ static void start_advertising_coded(struct k_work *work)
 	}
 
 	printk("Advertiser %p set started\n", adv);
+}
+
+/****************************************************************************/
+/****************************************************************************/
+
+static void indicate_cb(struct bt_conn *conn, struct bt_gatt_indicate_params *params,
+			uint8_t err)
+{	
+	LOG_INF("Indication %s\n", err == 0 ? "success" : "fail");
+}
+
+/****************************************************************************/
+/****************************************************************************/
+
+static ssize_t write_cmd(struct bt_conn *conn, const struct bt_gatt_attr *attr,
+			 const void *buf, uint16_t len, uint16_t offset, uint8_t flags)
+{
+	uint8_t value = *((uint8_t *)buf);
+
+	if(value == BLE_CMD_START_OW) 
+	{
+		BLE_overwrite = true;
+	}
+	else if(value == BLE_CMD_STOP_OW)
+	{
+		BLE_overwrite = false;
+	}
+	else
+	{
+		BLE_cmd = value;
+	}
+
+	// send indication to the client
+	response = value + 0xA0;
+	indicate_params.data = &response;
+	indicate_params.len = sizeof(response);
+	indicate_params.func = indicate_cb;
+	indicate_params.destroy = NULL;
+	indicate_params.uuid = BT_UUID_DECLARE_128(BT_UUID_CUSTOM_CHARA_CMD);
+
+	int err = bt_gatt_indicate(NULL, &indicate_params);
+
+	if (err) {
+        printk("Indication failed, error: %d\n", err);
+    }
+
+	return len;
 }
 
 /****************************************************************************/

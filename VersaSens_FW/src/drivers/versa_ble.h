@@ -68,8 +68,18 @@ Description : Original version.
 #define BT_UUID_CUSTOM_CHARA_STATUS \	
     BT_UUID_128_ENCODE(0xE11D2E03, 0x04AB, 0x4DA5, 0xB66A, 0xEECB738F90F3)
 
+#define BT_UUID_CUSTOM_CHARA_CMD \
+    BT_UUID_128_ENCODE(0xE11D2E04, 0x04AB, 0x4DA5, 0xB66A, 0xEECB738F90F3)	
+
 /* Maximum size of the data from the sensor */
 #define MAX_DATA_SIZE 244
+
+/* BLE commands */
+#define BLE_CMD_START_OW    0x08
+#define BLE_CMD_STOP_OW     0x09
+#define BLE_CMD_MODE_IDLE   0x01
+#define BLE_CMD_MODE_STORE  0x02
+#define BLE_CMD_MODE_STREAM 0x03
 
 /****************************************************************************/
 /**                                                                        **/
@@ -97,7 +107,8 @@ struct battery_data {
 
 #ifndef _VERSA_BLE_C_SRC
 
-
+extern bool BLE_overwrite;
+extern uint8_t BLE_cmd;
 
 #endif  /* _VERSA_BLE_C_SRC */
 

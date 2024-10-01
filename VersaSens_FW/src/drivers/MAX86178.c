@@ -412,6 +412,10 @@ int max86178_config(void)
     reg.REG_PPG_CONFIG_3.b.ALC_DISABLE = 0b0;
     reg.REG_PPG_CONFIG_3.b.SMP_AVE = 0b1;
     max86178_write_reg(REG_PPG_CONFIG_3_Addr, reg.REG_PPG_CONFIG_3.w);
+
+    reg.REG_PPG_CONFIG_4.b.PROX_AUTO = 0b0;
+    reg.REG_PPG_CONFIG_4.b.PROX_DATA_EN = 0b0;
+    max86178_write_reg(REG_PPG_CONFIG_4_Addr, reg.REG_PPG_CONFIG_4.w);
     
     reg.REG_ECG_CONFIG_1.b.ECG_DEC_RATE = 0x3;
     reg.REG_ECG_CONFIG_1.b.ECG_EN = 0b1;
@@ -507,7 +511,7 @@ int max86178_config(void)
     reg.REG_MEAS2_SELECTS.b.MEAS2_DRVB = 0b001;
     max86178_write_reg(REG_MEAS2_SELECTS_Addr, reg.REG_MEAS2_SELECTS.w);
 
-    reg.REG_MEAS2_CONFIG_1.b.MEAS2_AVER = 0b001;
+    reg.REG_MEAS2_CONFIG_1.b.MEAS2_AVER = 0b100;
     reg.REG_MEAS2_CONFIG_1.b.MEAS2_TINT = 0b11;
     reg.REG_MEAS2_CONFIG_1.b.MEAS2_FILT_SEL = 0b0;
     reg.REG_MEAS2_CONFIG_1.b.MEAS2_FILT2_SEL = 0b1;
@@ -517,6 +521,10 @@ int max86178_config(void)
     reg.REG_MEAS2_CONFIG_2.b.MEAS2_PPG1_ADC_RGE = 0b11;
     reg.REG_MEAS2_CONFIG_2.b.MEAS2_PPG2_ADC_RGE = 0b11;
     max86178_write_reg(REG_MEAS2_CONFIG_2_Addr, reg.REG_MEAS2_CONFIG_2.w);
+
+    reg.REG_MEAS2_CONFIG_3.b.MEAS2_PPG1_DACOFF = 0x00;
+    reg.REG_MEAS2_CONFIG_3.b.MEAS2_PPG2_DACOFF = 0x00;
+    max86178_write_reg(REG_MEAS2_CONFIG_3_Addr, reg.REG_MEAS2_CONFIG_3.w);
 
     reg.REG_MEAS2_CONFIG_4.b.MEAS2_LED_RGE = 0b01;
     reg.REG_MEAS2_CONFIG_4.b.MEAS2_LED_SETLNG = 0b01;
@@ -611,6 +619,12 @@ int max86178_config(void)
     //reg.REG_PPG_CONFIG_1.b.MEAS5_EN = 0b0;
     //reg.REG_PPG_CONFIG_1.b.MEAS6_EN = 0b0;
     //max86178_write_reg(REG_PPG_CONFIG_1_Addr, reg.REG_PPG_CONFIG_1.w);
+
+    reg.REG_THRESHOLD_MEAS_SEL.b.THRESH1_MEAS_SEL = 0b00;
+    reg.REG_THRESHOLD_MEAS_SEL.b.THRESH2_MEAS_SEL = 0b00;
+    max86178_write_reg(REG_THRESHOLD_MEAS_SEL_Addr, reg.REG_THRESHOLD_MEAS_SEL.w);
+
+
 
     return 0;
 }
