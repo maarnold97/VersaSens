@@ -72,7 +72,7 @@ Description : Original version.
     BT_UUID_128_ENCODE(0xE11D2E04, 0x04AB, 0x4DA5, 0xB66A, 0xEECB738F90F3)	
 
 /* Maximum size of the data from the sensor */
-#define MAX_DATA_SIZE 244
+#define MAX_DATA_SIZE_BLE 244
 
 /* BLE commands */
 #define BLE_CMD_START_OW    0x08
@@ -87,9 +87,9 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-struct sensor_data {
+struct sensor_data_ble {
 	void *fifo_reserved;  // reserved for use by k_fifo
-	uint8_t data[MAX_DATA_SIZE];  // sensor data
+	uint8_t data[MAX_DATA_SIZE_BLE];  // sensor data
 	size_t size;  // size of the data
 };
 

@@ -184,9 +184,9 @@ BT_GATT_SERVICE_DEFINE(TEST, BT_GATT_PRIMARY_SERVICE(BT_UUID_DECLARE_128(BT_UUID
 	BT_GATT_CCC(NULL, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
 );
 
-K_FIFO_DEFINE(sensor_fifo);
-K_THREAD_STACK_DEFINE(sensor_thread_stack, 1024);
-struct k_thread sensor_thread_data;
+K_FIFO_DEFINE(ble_fifo);
+K_THREAD_STACK_DEFINE(ble_thread_stack, 1024);
+struct k_thread ble_thread_data;
 
 static struct bt_gatt_exchange_params exchange_params;
 
@@ -322,7 +322,7 @@ void sensor_thread(void)
 {
 	while (1) {
     	// Get sensor data
-    	struct sensor_data *data = k_fifo_get(&sensor_fifo, K_FOREVER);
+    	struct sensor_data_ble *data = k_fifo_get(&ble_fifo, K_FOREVER);
 
     	// Send notification
     	int ret = bt_gatt_notify(NULL, &TEST.attrs[1], data->data, data->size);
@@ -348,14 +348,14 @@ void receive_sensor_data(uint8_t *data, size_t size)
 		return;
 	}
 	// Allocate a new sensor data
-	struct sensor_data *new_data = k_malloc(sizeof(*new_data));
+	struct sensor_data_ble *new_data = k_malloc(sizeof(*new_data));
 
 	// Set the sensor data
-	new_data->size = size < MAX_DATA_SIZE ? size : MAX_DATA_SIZE;
+	new_data->size = size < MAX_DATA_SIZE_BLE ? size : MAX_DATA_SIZE_BLE;
 	memcpy(new_data->data, data, new_data->size);
 
 	// Put the sensor data in the FIFO
-	k_fifo_put(&sensor_fifo, new_data);
+	k_fifo_put(&ble_fifo, new_data);
 }
 
 /****************************************************************************/
@@ -393,8 +393,8 @@ int start_ble(void)
 
 	k_work_submit(&start_advertising_worker);
 	// k_work_schedule(&notify_work, K_NO_WAIT);
-	k_thread_create(&sensor_thread_data, sensor_thread_stack,
-			K_THREAD_STACK_SIZEOF(sensor_thread_stack),
+	k_thread_create(&ble_thread_data, ble_thread_stack,
+			K_THREAD_STACK_SIZEOF(ble_thread_stack),
 			(k_thread_entry_t)sensor_thread, NULL, NULL, NULL,
 			BLE_PRIO, 0, K_NO_WAIT);
 

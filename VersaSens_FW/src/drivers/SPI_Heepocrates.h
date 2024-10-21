@@ -61,11 +61,23 @@ Description : Original version.
 #define MISO_PIN_SLAVE 34
 #define CSN_PIN_SLAVE 6
 
+/* Maximum size of the data from the sensor */
+#define MAX_DATA_SIZE_HEEPO 512
+
+/* FIFO max number of elements */
+#define SPI_HEEPOCRATES_FIFO_SIZE 100
+
 /****************************************************************************/
 /**                                                                        **/
 /**                       TYPEDEFS AND STRUCTURES                          **/
 /**                                                                        **/
 /****************************************************************************/
+
+struct sensor_data_heepo {
+	void *fifo_reserved;  // reserved for use by k_fifo
+	uint8_t data[MAX_DATA_SIZE_HEEPO];  // sensor data
+	size_t size;  // size of the data
+};
 
 /****************************************************************************/
 /**                                                                        **/
@@ -100,6 +112,29 @@ void SPI_Heepocrates_init(void);
  * @retval None
  */
 void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * p_rx_buffer, uint16_t length_rx);
+
+/*****************************************************************************
+*****************************************************************************/
+
+/**
+ * @brief This function gets the data from the FIFO
+ * 
+ * @retval None
+ */
+void SPI_Heep_get_fifo();
+
+/*****************************************************************************
+*****************************************************************************/
+
+/**
+ * @brief This function adds the data to the FIFO
+ * 
+ * @param data : pointer to the data
+ * @param size : size of the data
+ * 
+ * @retval None
+ */
+void SPI_Heep_add_fifo(uint8_t *data, size_t size);
 
 /****************************************************************************/
 /**                                                                        **/

@@ -93,12 +93,20 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context);
 /****************************************************************************/
 
 /** @brief Transmit buffer initialized with the specified message ( @ref MSG_TO_SEND_SLAVE ). */
-static uint8_t m_tx_buffer_slave[100] = MSG_TO_SEND_SLAVE;
+static uint8_t m_tx_buffer_slave[300] = MSG_TO_SEND_SLAVE;
 
 /** @brief Receive buffer defined with the size to store specified message ( @ref MSG_TO_SEND_MASTER ). */
 static uint8_t m_rx_buffer_slave[100] = MSG_TO_SEND_SLAVE;
 
 nrfx_spis_t spis_inst = NRFX_SPIS_INSTANCE(SPIS_INST_IDX);
+
+K_FIFO_DEFINE(heepo_fifo);
+
+/** @brief Buffer for the next measurement to be sent */
+static uint8_t heepo_next_meas[300];
+uint8_t heepo_next_meas_size;
+
+uint8_t heepo_fifo_counter = 0;
 
 /****************************************************************************/
 /**                                                                        **/
@@ -120,6 +128,7 @@ void SPI_Heepocrates_init(void)
                                                               MISO_PIN_SLAVE,
                                                               CSN_PIN_SLAVE);
     spis_config.mode = NRF_SPIS_MODE_0;
+    spis_config.miso_drive = NRF_GPIO_PIN_S0S1;
 
     nrfx_spis_uninit(&spis_inst);
 
@@ -161,6 +170,45 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
     return;
 }
 
+// /*****************************************************************************
+// *****************************************************************************/
+
+void SPI_Heep_add_fifo(uint8_t *data, size_t size)
+{
+    if(heepo_fifo_counter >= 10)
+    {
+        return;
+    }
+    struct sensor_data_heepo *p_data = k_malloc(sizeof(*p_data));
+    p_data->size = size;
+    memcpy(p_data->data, data, size);
+    k_fifo_put(&heepo_fifo, p_data);
+    heepo_fifo_counter++;
+
+    return;
+}
+
+// /*****************************************************************************
+// *****************************************************************************/
+
+void SPI_Heep_get_fifo()
+{
+    struct sensor_data_heepo *p_data = k_fifo_get(&heepo_fifo, K_NO_WAIT);
+    if (p_data != NULL)
+    {
+        memcpy(heepo_next_meas, p_data->data, p_data->size);
+        heepo_next_meas_size = p_data->size;
+        k_free(p_data);
+        heepo_fifo_counter--;
+    }
+    else
+    {
+        heepo_next_meas_size = 0;
+    }
+
+    return;
+}
+
 /****************************************************************************/
 /**                                                                        **/
 /*                            LOCAL FUNCTIONS                               */
@@ -171,6 +219,18 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
 {
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE)
     {
+        if (m_rx_buffer_slave[0] == 0x04)
+        {
+            LOG_INF("SPIS received 0x04");
+            SPI_Heep_get_fifo();
+            m_tx_buffer_slave[0] = heepo_next_meas_size;
+        }
+        else if (m_rx_buffer_slave[0] == 0x05)
+        {
+            LOG_INF("SPIS received 0x05");
+            memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
+        }
+        
         char * p_msg = p_context;
         LOG_INF("SPIS finished. Context passed to the handler: >%s<", p_msg);
         LOG_INF("SPIS rx length: %d", p_event->rx_amount);

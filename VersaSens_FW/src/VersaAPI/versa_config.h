@@ -89,12 +89,12 @@ Description : Original version.
 #define VCONF_BNO086_EN         1
 #define VCONF_MAX30001_EN       1
 #define VCONF_MAX86178_EN       1
-#define VCONF_MLX90632_EN       0
-#define VCONF_T5838_EN          0
+#define VCONF_MLX90632_EN       1
+#define VCONF_T5838_EN          1
 #define VCONF_MAX77658_EN       1
 
 /* ADS1298 configuration */
-#define VCONF_ADS1298_FS        VCONF_ADS1298_FS_1000
+#define VCONF_ADS1298_FS        VCONF_ADS1298_FS_250
 #define VCONF_ADS1298_GAIN      VCONF_ADS1298_GAIN_12
 #define VCONF_ADS1298_SUBSAMPLING_FACTOR    4
 

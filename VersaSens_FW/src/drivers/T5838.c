@@ -70,7 +70,7 @@ Description : Original version.
 
 LOG_MODULE_REGISTER(t5838, LOG_LEVEL_INF);
 
-#define PDM_BUFFER_SIZE        240
+#define PDM_BUFFER_SIZE        480
 
 #define T5838_PDM(idx)	       DT_NODELABEL(pdm##idx)
 
