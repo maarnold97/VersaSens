@@ -318,6 +318,7 @@ int MAX77658_init(void){
 
     k_thread_create(&MAX77658_thread, MAX77658_thread_stack, K_THREAD_STACK_SIZEOF(MAX77658_thread_stack),
                     max77658_thread_func, NULL, NULL, NULL, MAX77658_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&MAX77658_thread, "MAX77658_thread");
 
     printk("MAX77658_init\n");
     return 0;

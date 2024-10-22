@@ -260,6 +260,7 @@ void t5838_start_saving(void)
     T5838_save_stop_thread = false;
     k_thread_create(&T5838_save_thread, T5838_save_thread_stack, K_THREAD_STACK_SIZEOF(T5838_save_thread_stack), 
                     t5838_save_thread_func, NULL, NULL, NULL, T5838_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&T5838_save_thread, "T5838_save_thread");
 }
 
 /****************************************************************************/

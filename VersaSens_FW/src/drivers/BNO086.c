@@ -177,6 +177,7 @@ int bno086_start_stream(void)
     /*! Start the BNO086 save thread */
     k_thread_create(&BNO086_save_thread, BNO086_save_thread_stack, K_THREAD_STACK_SIZEOF(BNO086_save_thread_stack),
                     bno086_save_thread_func, NULL, NULL, NULL, BNO086_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&BNO086_save_thread, "BNO086_save_thread");
 
     /*! Start a UART reception */
     status = nrfx_uarte_rx(&uarte_inst, bno_frame, BNO086_RVC_MSG_LENGTH);

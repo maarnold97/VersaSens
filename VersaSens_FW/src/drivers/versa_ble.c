@@ -397,6 +397,7 @@ int start_ble(void)
 			K_THREAD_STACK_SIZEOF(ble_thread_stack),
 			(k_thread_entry_t)sensor_thread, NULL, NULL, NULL,
 			BLE_PRIO, 0, K_NO_WAIT);
+	k_thread_name_set(&ble_thread_data, "BLE Thread");
 
 	return 0;
 }

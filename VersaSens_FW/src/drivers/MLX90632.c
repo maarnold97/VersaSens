@@ -419,6 +419,7 @@ int mlx90632_start_continuous_read(void)
     /*! Start the thread responsible for reading the measurement */
     k_thread_create(&MLX90632_thread, MLX90632_thread_stack, K_THREAD_STACK_SIZEOF(MLX90632_thread_stack),
                     mlx90632_thread_func, NULL, NULL, NULL, MLX90632_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&MLX90632_thread, "MLX90632_thread");
     return 0;
 }
 

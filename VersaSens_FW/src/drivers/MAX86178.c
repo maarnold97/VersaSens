@@ -294,6 +294,7 @@ int max86178_start_thread(void)
     MAX86178_stop_thread = false;
     k_thread_create(&MAX86178_thread, MAX86178_thread_stack, K_THREAD_STACK_SIZEOF(MAX86178_thread_stack),
                     max86178_thread_func, NULL, NULL, NULL, MAX86178_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&MAX86178_thread, "MAX86178_thread");
     return 0;
 }
 

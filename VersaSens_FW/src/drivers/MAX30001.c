@@ -271,6 +271,7 @@ void MAX30001_start_thread(void)
     MAX30001_stop_thread_flag = false;
     k_thread_create(&MAX30001_thread, MAX30001_thread_stack, K_THREAD_STACK_SIZEOF(MAX30001_thread_stack),
                     MAX30001_thread_func, NULL, NULL, NULL, MAX30001_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&MAX30001_thread, "MAX30001_thread");
 }
 
 /****************************************************************************/

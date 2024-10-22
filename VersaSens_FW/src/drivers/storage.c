@@ -332,6 +332,7 @@ int storage_write_to_fifo(uint8_t *data, size_t size)
             fifo_buffer_index = 0;
             k_thread_create(&fifo_thread, fifo_thread_stack, K_THREAD_STACK_SIZEOF(fifo_thread_stack),
                             write_fifo_to_storage, NULL, NULL, NULL, STORAGE_PRIO, 0, K_NO_WAIT);
+            k_thread_name_set(&fifo_thread, "Storage Thread");
         }
 
     }

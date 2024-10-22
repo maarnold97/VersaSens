@@ -245,6 +245,8 @@ int enable_auto_connect(void)
     auto_disconnect = true;
     k_tid_t new_module_thread_id = k_thread_create(&new_module_thread, new_module_thread_stack, K_THREAD_STACK_SIZEOF(new_module_thread_stack),
                                              new_module_thread_func, NULL, NULL, NULL, -1, 0, K_NO_WAIT);
+    k_thread_name_set(new_module_thread_id, "New Module Thread");
+
     return 0;
 }
 
@@ -408,6 +410,7 @@ int versa_start_led_thread(void)
 {
     k_tid_t LED_thread_id = k_thread_create(&LED_thread, LED_thread_stack, K_THREAD_STACK_SIZEOF(LED_thread_stack),
                                            LED_thread_func, NULL, NULL, NULL, 2, 0, K_NO_WAIT);
+    k_thread_name_set(LED_thread_id, "LED Thread");
 
     LOG_INF("Versa API LED thread started\n");
     return 0;
@@ -420,6 +423,8 @@ int versa_start_mode_thread(void)
 {
     k_tid_t mode_thread_id = k_thread_create(&mode_thread, mode_thread_stack, K_THREAD_STACK_SIZEOF(mode_thread_stack),
                                              mode_thread_func, NULL, NULL, NULL, 1, 0, K_NO_WAIT);
+    k_thread_name_set(mode_thread_id, "Mode Thread");
+
     return 0;
 }
 

@@ -444,6 +444,7 @@ int ADS1298_start_thread(void)
     // Start the thread
     k_thread_create(&ADS1298_thread, ADS1298_thread_stack, K_THREAD_STACK_SIZEOF(ADS1298_thread_stack),
                     ADS1298_thread_func, NULL, NULL, NULL, ADS1298_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&ADS1298_thread, "ADS1298_thread");
     return 0;
 }
 
@@ -620,8 +621,7 @@ int ADS1298_reconfig(void)
         LOG_ERR("twim_reconfigure failed with error code: %d\n", err_code);
         return -1;
     }
-
-    LOG_INF("ADS1298_reconfig");
+    
     return 0;
 }
 
