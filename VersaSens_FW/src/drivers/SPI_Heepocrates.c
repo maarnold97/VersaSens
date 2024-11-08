@@ -48,6 +48,8 @@ Description : Original version.
 #include "SPI_Heepocrates.h"
 #include <nrfx_spis.h>
 #include <zephyr/logging/log.h>
+#include <nrfx_gpiote.h>
+
 
 /****************************************************************************/
 /**                                                                        **/
@@ -108,6 +110,8 @@ uint8_t heepo_next_meas_size;
 
 uint8_t heepo_fifo_counter = 0;
 
+bool length_sent = false;
+
 /****************************************************************************/
 /**                                                                        **/
 /*                           EXPORTED FUNCTIONS                             */
@@ -138,6 +142,9 @@ void SPI_Heepocrates_init(void)
 
     IRQ_DIRECT_CONNECT(NRFX_IRQ_NUMBER_GET(NRF_SPIS_INST_GET(SPIS_INST_IDX)), IRQ_PRIO_LOWEST,
                        NRFX_SPIS_INST_HANDLER_GET(SPIS_INST_IDX), 0);
+
+    nrf_gpio_cfg_output(PIN_HEEPO_RDY);
+    nrf_gpio_pin_set(PIN_HEEPO_RDY);
 
     SPI_Heepocrates_start(m_tx_buffer_slave, sizeof(m_tx_buffer_slave), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
 
@@ -219,25 +226,49 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
 {
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE)
     {
-        if (m_rx_buffer_slave[0] == 0x04)
+        nrf_gpio_pin_clear(PIN_HEEPO_RDY);
+
+        // if (m_rx_buffer_slave[0] == 0x04)
+        // {
+        //     // LOG_INF("SPIS received 0x04");
+        //     SPI_Heep_get_fifo();
+        //     m_tx_buffer_slave[0] = heepo_next_meas_size;
+        // }
+        // else if (m_rx_buffer_slave[0] == 0x05)
+        // {
+        //     // LOG_INF("SPIS received 0x05");
+        //     memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
+        // }
+        
+
+        if (length_sent == false)
         {
-            LOG_INF("SPIS received 0x04");
             SPI_Heep_get_fifo();
             m_tx_buffer_slave[0] = heepo_next_meas_size;
+            if (heepo_next_meas_size != 0)
+            {
+                length_sent = true;
+            }
         }
-        else if (m_rx_buffer_slave[0] == 0x05)
+        else
         {
-            LOG_INF("SPIS received 0x05");
             memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
+            length_sent = false;
         }
-        
-        char * p_msg = p_context;
-        LOG_INF("SPIS finished. Context passed to the handler: >%s<", p_msg);
-        LOG_INF("SPIS rx length: %d", p_event->rx_amount);
-        LOG_INF("SPIS rx buffer: %s", m_rx_buffer_slave);
+
+
+
+        // char * p_msg = p_context;
+        // LOG_INF("SPIS finished. Context passed to the handler: >%s<", p_msg);
+        // LOG_INF("SPIS rx length: %d", p_event->rx_amount);
+        // LOG_INF("SPIS rx buffer: %s", m_rx_buffer_slave);
         nrfx_spis_buffers_set(&spis_inst,
                               m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
                               m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+    }
+    else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE)
+    {
+        nrf_gpio_pin_set(PIN_HEEPO_RDY);
     }
 }
 

@@ -67,6 +67,9 @@ Description : Original version.
 /* FIFO max number of elements */
 #define SPI_HEEPOCRATES_FIFO_SIZE 100
 
+/* SPI Heepocrates ready signal pin */
+#define PIN_HEEPO_RDY 20
+
 /****************************************************************************/
 /**                                                                        **/
 /**                       TYPEDEFS AND STRUCTURES                          **/

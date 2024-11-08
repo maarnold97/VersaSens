@@ -94,7 +94,7 @@ Description : Original version.
 #define VCONF_MAX77658_EN       1
 
 /* ADS1298 configuration */
-#define VCONF_ADS1298_FS        VCONF_ADS1298_FS_250
+#define VCONF_ADS1298_FS        VCONF_ADS1298_FS_500
 #define VCONF_ADS1298_GAIN      VCONF_ADS1298_GAIN_12
 #define VCONF_ADS1298_SUBSAMPLING_FACTOR    4
 

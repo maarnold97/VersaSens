@@ -58,6 +58,7 @@ Description : Original version.
 #include "storage.h"
 #include "versa_config.h"
 #include "spim_inst.h"
+#include "SPI_Heepocrates.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -597,6 +598,7 @@ void ADS1298_thread_func(void *arg1, void *arg2, void *arg3)
         if (storage_count == ADS1298_CONSEC_MEAS)
         {
             int ret = storage_write_to_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
+            SPI_Heep_add_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
             storage_count = 0; // Reset the storage counter
         }
     }
