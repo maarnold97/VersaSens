@@ -1,12 +1,12 @@
 /*
                               *******************
-******************************* H SOURCE FILE *******************************
+******************************* C SOURCE FILE *******************************
 **                            *******************                          **
 **                                                                         **
-** project  : VersaSens                                                        **
-** filename : T5838.h                                                   **
+** project  : VersaSens                                                    **
+** filename : app_data.c                                                   **
 ** version  : 1                                                            **
-** date     : DD/MM/21                                                     **
+** date     : DD/MM/YY                                                     **
 **                                                                         **
 *****************************************************************************
 **                                                                         **
@@ -29,126 +29,118 @@ Description : Original version.
 /***************************************************************************/
 
 /**
-* @file   T5838.h
+* @file   app_data.c
 * @date   DD/MM/YY
-* @brief  This is the main header of T5838.c
+* @brief  This is the main header of app_data.c
 *
 * Here typically goes a more extensive explanation of what the header
 * defines.
 */
 
-#ifndef _T5838_H
-#define _T5838_H
+#define _APP_DATA_C_SRC
 
 /****************************************************************************/
 /**                                                                        **/
-/**                            MODULES USED                                **/
+/*                             MODULES USED                                 */
 /**                                                                        **/
 /****************************************************************************/
 
-#include <zephyr/types.h>
-#include "thread_config.h"
+#include <stdlib.h>
+#include "app_data.h"
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 
 /****************************************************************************/
 /**                                                                        **/
-/**                       DEFINITIONS AND MACROS                           **/
+/*                        DEFINITIONS AND MACROS                            */
 /**                                                                        **/
 /****************************************************************************/
 
-/*! PDM pin configuration */
-#define PDM_CLK_PIN         43
-#define PDM_DATA_PIN        35
+LOG_MODULE_REGISTER(app_data, LOG_LEVEL_INF);
+
+#define APP_DATA_FIFO_MAX_SIZE 10
 
 /****************************************************************************/
 /**                                                                        **/
-/**                       TYPEDEFS AND STRUCTURES                          **/
+/*                        TYPEDEFS AND STRUCTURES                           */
 /**                                                                        **/
 /****************************************************************************/
 
-/*! Foramt of the data to be stored in the flash */
-typedef struct {
-    int16_t header;
-    int32_t rawtime_bin;
-    int16_t time_ms_bin;
-    uint8_t len;
-    uint8_t index;
-    uint8_t data[240];
-} __attribute__((packed)) T5838_StorageFormat;
-
 /****************************************************************************/
 /**                                                                        **/
-/**                          EXPORTED VARIABLES                            **/
+/*                      PROTOTYPES OF LOCAL FUNCTIONS                       */
 /**                                                                        **/
 /****************************************************************************/
 
-#ifndef _T5838_C_SRC
-
-
-
-#endif  /* _T5838_C_SRC */
-
 /****************************************************************************/
 /**                                                                        **/
-/**                          EXPORTED FUNCTIONS                            **/
+/*                           EXPORTED VARIABLES                             */
 /**                                                                        **/
 /****************************************************************************/
 
-/**
- * @brief  This function starts the T5838 driver
- * 
- * @param  None
- * 
- * @retval 0 if successful, -1 otherwise
- */
-int t5838_start(void);
-
-/**
- * @brief  This function stops the T5838 driver
- * 
- * @param  None
- * 
- * @retval 0 if successful, -1 otherwise
- */
-int t5838_stop(void);
-
-/**
- * @brief  This function initializes the T5838 driver
- * 
- * @param  None
- * 
- * @retval 0 if successful, -1 otherwise
- */
-int t5838_init(void);
-
-/**
- * @brief  This function starts the continuous saving of the data
- * 
- * @param  None
- * 
- * @retval None
- */
-void t5838_start_saving(void);
-
-/**
- * @brief  This function stops the continuous saving of the data
- * 
- * @param  None
- * 
- * @retval None
- */
-void t5838_stop_saving(void);
-
 /****************************************************************************/
 /**                                                                        **/
-/**                          INLINE FUNCTIONS                              **/
+/*                            GLOBAL VARIABLES                              */
 /**                                                                        **/
 /****************************************************************************/
 
+K_FIFO_DEFINE(app_data_fifo);
 
+uint8_t app_data_fifo_counter = 0;
 
-#endif /* _T5838_H */
 /****************************************************************************/
 /**                                                                        **/
-/**                                EOF                                     **/
+/*                           EXPORTED FUNCTIONS                             */
+/**                                                                        **/
+/****************************************************************************/
+
+void app_data_add_to_fifo(uint8_t *data, size_t size)
+{
+    if (app_data_fifo_counter >= APP_DATA_FIFO_MAX_SIZE)
+    {
+        return;
+    }
+
+    // Allocate a new sensor data
+	struct app_data_struct *new_data = k_malloc(sizeof(*new_data));
+
+    if (new_data == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for new_data\n");
+        return;
+    }
+
+	// Set the sensor data
+	new_data->size = size < MAX_DATA_SIZE_APP_DATA ? size : MAX_DATA_SIZE_APP_DATA;
+	memcpy(new_data->data, data, new_data->size);
+
+	// Put the sensor data in the FIFO
+	k_fifo_put(&app_data_fifo, new_data);
+    app_data_fifo_counter++;
+}
+
+/****************************************************************************/
+/****************************************************************************/
+
+void app_data_get_from_fifo(struct app_data_struct *data)
+{
+    struct app_data *p_data = k_fifo_get(&app_data_fifo, K_NO_WAIT);
+    if (p_data != NULL)
+    {
+        memcpy(data, p_data, sizeof(*data));
+        k_free(p_data);
+        app_data_fifo_counter--;
+    }
+}
+
+/****************************************************************************/
+/**                                                                        **/
+/*                            LOCAL FUNCTIONS                               */
+/**                                                                        **/
+/****************************************************************************/
+
+/****************************************************************************/
+/**                                                                        **/
+/*                                 EOF                                      */
 /**                                                                        **/
 /****************************************************************************/

@@ -171,24 +171,6 @@ static void pdm_handler(nrfx_pdm_evt_t const *event)
 /*****************************************************************************
 *****************************************************************************/
 
-int t5838_set_freq(uint32_t freq)
-{
-    nrfx_err_t status;
-    (void)status; 
-
-    /*! Get the default PDM configuration */
-    nrfx_pdm_config_t pdm_config = NRFX_PDM_DEFAULT_CONFIG(PDM_CLK_PIN, PDM_DATA_PIN);
-    pdm_config.clock_freq = NRF_PDM_FREQ_1000K / 1000.0 * freq;
-
-    /*! Initialize the PDM peripheral */
-    status = nrfx_pdm_reconfigure(&pdm_config);
-
-    return (status == NRFX_SUCCESS)? 0 : -1;
-}
-
-/*****************************************************************************
-*****************************************************************************/
-
 int t5838_start(void)
 {
     nrfx_err_t status;
@@ -327,12 +309,13 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
             index++;
             memcpy(T5838_storage.data, CompressedFrame, len);
 
-            int ret = storage_write_to_fifo((uint8_t *)&T5838_storage, len + 10);
+            int ret = storage_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
+            app_data_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
             if (ret != 0)
             {
                 LOG_ERR("Error writing to flash\n");
             }
-            receive_sensor_data((uint8_t *)&T5838_storage, len + 10);
+            ble_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
 
             printk("Frame 1, len : %d\n", len);
         }
@@ -348,12 +331,13 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
             index++;
             memcpy(T5838_storage.data, CompressedFrame, len);
 
-            int ret = storage_write_to_fifo((uint8_t *)&T5838_storage, len + 10);
+            int ret = storage_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
+            app_data_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
             if (ret != 0)
             {
                 LOG_ERR("Error writing to flash\n");
             }
-            receive_sensor_data((uint8_t *)&T5838_storage, len + 10);
+            ble_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
 
             printk("Frame 2, len : %d\n", len);
         }
@@ -369,12 +353,13 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
             index++;
             memcpy(T5838_storage.data, CompressedFrame, len);
 
-            int ret = storage_write_to_fifo((uint8_t *)&T5838_storage, len + 10);
+            int ret = storage_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
+            app_data_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
             if (ret != 0)
             {
                 LOG_ERR("Error writing to flash\n");
             }
-            receive_sensor_data((uint8_t *)&T5838_storage, len + 10);
+            ble_add_to_fifo((uint8_t *)&T5838_storage, len + 10);
 
             printk("Frame 3, len : %d\n", len);
             

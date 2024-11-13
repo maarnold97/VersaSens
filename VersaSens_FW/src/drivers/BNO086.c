@@ -391,13 +391,13 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
 
         memcpy(bno_storage.data, write_packet, 13*10);
 
-        int ret = storage_write_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        int ret = storage_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
         if(ret != 0)
         {
             LOG_INF("Flash write failed");
         }
-
-        receive_sensor_data((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        app_data_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        ble_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
 
         // SPI_Heep_add_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
 

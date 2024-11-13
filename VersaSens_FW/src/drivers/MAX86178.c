@@ -660,8 +660,9 @@ void max86178_thread_func(void *arg1, void *arg2, void *arg3)
         MAX86178_Storage.index = index++;
         memcpy(MAX86178_Storage.data, data_read, MAX86178_FIFO_READ_SIZE);
 
-        storage_write_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
-        receive_sensor_data((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        storage_add_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        app_data_add_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        ble_add_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
 
         k_sleep(K_MSEC(25));
 

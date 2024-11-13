@@ -458,8 +458,9 @@ void MAX30001_thread_func(void *arg1, void *arg2, void *arg3)
 
         if (count == CONSEC_SAMPLES)
         {
-            storage_write_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
-            receive_sensor_data((uint8_t *)&format_datas, sizeof(format_datas));
+            storage_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            app_data_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            ble_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
             count = 0;
         }
 

@@ -93,6 +93,9 @@ Description : Original version.
 #define VCONF_T5838_EN          1
 #define VCONF_MAX77658_EN       1
 
+/* Heepo module configuration */
+#define VCONF_ADS1298_HEEPO     1
+
 /* ADS1298 configuration */
 #define VCONF_ADS1298_FS        VCONF_ADS1298_FS_500
 #define VCONF_ADS1298_GAIN      VCONF_ADS1298_GAIN_12
