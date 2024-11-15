@@ -401,7 +401,11 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
         {
             SPI_Heep_add_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
         }
-        app_data_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        if (VCONF_BNO086_APPDATA)
+        {
+            app_data_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        }
+        
         ble_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
 
         bno086_frame_t *frame = (bno086_frame_t *)frame_write;

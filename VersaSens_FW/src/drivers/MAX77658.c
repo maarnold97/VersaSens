@@ -440,11 +440,14 @@ void max77658_thread_func(void *arg1, void *arg2, void *arg3)
             MAX77658_Storage.soc = data_read[3];
 
             storage_add_to_fifo((uint8_t *)&MAX77658_Storage, sizeof(MAX77658_Storage));
-            app_data_add_to_fifo((uint8_t *)&MAX77658_Storage, sizeof(MAX77658_Storage));
             ble_add_to_fifo((uint8_t *)&MAX77658_Storage, sizeof(MAX77658_Storage));
             if(VCONF_MAX77658_HEEPO)
             {
                 SPI_Heep_add_fifo((uint8_t *)&MAX77658_Storage, sizeof(MAX77658_Storage));
+            }
+            if(VCONF_MAX77658_APPDATA)
+            {
+                app_data_add_to_fifo((uint8_t *)&MAX77658_Storage, sizeof(MAX77658_Storage));
             }
 
         }

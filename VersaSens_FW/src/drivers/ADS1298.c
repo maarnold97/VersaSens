@@ -603,7 +603,10 @@ void ADS1298_thread_func(void *arg1, void *arg2, void *arg3)
             {
                 SPI_Heep_add_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));            
             }
-            app_data_add_to_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
+            if (VCONF_ADS1298_APPDATA)
+            {
+                app_data_add_to_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
+            }
             storage_count = 0; // Reset the storage counter
         }
     }

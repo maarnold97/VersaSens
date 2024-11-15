@@ -460,11 +460,14 @@ void MAX30001_thread_func(void *arg1, void *arg2, void *arg3)
         if (count == CONSEC_SAMPLES)
         {
             storage_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
-            app_data_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
             ble_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
             if (VCONF_MAX30001_HEEPO)
             {
                 SPI_Heep_add_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            }
+            if (VCONF_MAX30001_APPDATA)
+            {
+                app_data_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
             }
             count = 0;
         }

@@ -102,6 +102,16 @@ Description : Original version.
 #define VCONF_MAX77658_HEEPO    0
 #define VCONF_BNO086_HEEPO      0
 
+/* App Data configuration */
+#define VCONF_ADS1298_APPDATA   1
+#define VCONF_MAX30001_APPDATA  0
+#define VCONF_MAX86178_APPDATA  0
+#define VCONF_MLX90632_APPDATA  0
+#define VCONF_T5838_APPDATA     0
+#define VCONF_MAX77658_APPDATA  0
+#define VCONF_BNO086_APPDATA    0
+
+
 /* ADS1298 configuration */
 #define VCONF_ADS1298_FS        VCONF_ADS1298_FS_500
 #define VCONF_ADS1298_GAIN      VCONF_ADS1298_GAIN_12

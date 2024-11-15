@@ -303,7 +303,6 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
 
                 /* Store and add data to buffers */
                 int ret = storage_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
-                app_data_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
                 if (ret != 0) {
                     LOG_ERR("Error writing to flash\n");
                 }
@@ -312,6 +311,9 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
                 ble_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
                 if (VCONF_T5838_HEEPO) {
                     SPI_Heep_add_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
+                }
+                if(VCONF_T5838_APPDATA) {
+                    app_data_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
                 }
 
                 printk("Processed Frame %d, Length: %d bytes\n", i + 1, len);

@@ -515,7 +515,6 @@ void mlx90632_thread_func(void *arg1, void *arg2, void *arg3)
 
 
                 int ret = storage_add_to_fifo((uint8_t *)&format, sizeof(format));
-                app_data_add_to_fifo((uint8_t *)&format, sizeof(format));
                 if (ret != 0)
                 {
                     LOG_ERR("Error writing to flash\n");
@@ -525,6 +524,10 @@ void mlx90632_thread_func(void *arg1, void *arg2, void *arg3)
                 if (VCONF_MLX90632_HEEPO)
                 {
                     SPI_Heep_add_fifo((uint8_t *)&format, sizeof(format));
+                }
+                if(VCONF_MLX90632_APPDATA)
+                {
+                    app_data_add_to_fifo((uint8_t *)&format, sizeof(format));
                 }
             }
         }
