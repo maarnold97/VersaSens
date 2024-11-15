@@ -56,6 +56,7 @@ Description : Original version.
 #include "versa_time.h"
 #include "versa_ble.h"
 #include "SPI_Heepocrates.h"
+#include "versa_config.h"
 
 LOG_MODULE_REGISTER(bno086, LOG_LEVEL_INF);
 
@@ -396,10 +397,12 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
         {
             LOG_INF("Flash write failed");
         }
+        if (VCONF_BNO086_HEEPO)
+        {
+            SPI_Heep_add_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        }
         app_data_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
         ble_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
-
-        // SPI_Heep_add_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
 
         bno086_frame_t *frame = (bno086_frame_t *)frame_write;
         LOG_INF("Index: %02x", frame->B.index);

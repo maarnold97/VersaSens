@@ -95,6 +95,12 @@ Description : Original version.
 
 /* Heepo module configuration */
 #define VCONF_ADS1298_HEEPO     1
+#define VCONF_MAX30001_HEEPO    0
+#define VCONF_MAX86178_HEEPO    0
+#define VCONF_MLX90632_HEEPO    0
+#define VCONF_T5838_HEEPO       0
+#define VCONF_MAX77658_HEEPO    0
+#define VCONF_BNO086_HEEPO      0
 
 /* ADS1298 configuration */
 #define VCONF_ADS1298_FS        VCONF_ADS1298_FS_500
