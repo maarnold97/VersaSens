@@ -27,3 +27,6 @@
 3. **Flash**
    - Connect the programmer to your computer.
    - Using the interface provided by NRF Connect for VS Code, select the **Flash** action to upload the firmware to the device.
+
+## Known Issues
+- The initialization of a storage file on the SD card can take a variable amount of time, which increases with the number of files already present. This can result in delay when switching mode.

@@ -49,6 +49,7 @@ Description : Original version.
 #include <nrfx_spis.h>
 #include <zephyr/logging/log.h>
 #include <nrfx_gpiote.h>
+#include "thread_config.h"
 
 
 /****************************************************************************/
@@ -82,6 +83,15 @@ LOG_MODULE_REGISTER(SPI_Heepocrates, LOG_LEVEL_INF);
  */
 static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context);
 
+/**
+ * @brief Function for handling the SPI Heepocrates thread.
+ *
+ * @param[in] arg1 Pointer to the first argument.
+ * @param[in] arg2 Pointer to the second argument.
+ * @param[in] arg3 Pointer to the third argument.
+ */
+void HEEPO_thread_func(void *arg1, void *arg2, void *arg3);
+
 /****************************************************************************/
 /**                                                                        **/
 /*                           EXPORTED VARIABLES                             */
@@ -111,6 +121,16 @@ uint8_t heepo_next_meas_size;
 uint8_t heepo_fifo_counter = 0;
 
 bool length_sent = false;
+
+/*! Thread stack and instance */
+K_THREAD_STACK_DEFINE(HEEPO_thread_stack, 1024);
+struct k_thread HEEPO_thread;
+
+/*! Flag to stop the thread */
+volatile bool HEEPO_stop_thread_flag = false;
+
+// semaphore for the thread
+K_SEM_DEFINE(HEEPO_XFER_DONE, 0, 1);
 
 /****************************************************************************/
 /**                                                                        **/
@@ -144,7 +164,7 @@ void SPI_Heepocrates_init(void)
                        NRFX_SPIS_INST_HANDLER_GET(SPIS_INST_IDX), 0);
 
     nrf_gpio_cfg_output(PIN_HEEPO_RDY);
-    nrf_gpio_pin_set(PIN_HEEPO_RDY);
+    nrf_gpio_pin_clear(PIN_HEEPO_RDY);
 
     SPI_Heepocrates_start(m_tx_buffer_slave, sizeof(m_tx_buffer_slave), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
 
@@ -174,11 +194,18 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
     status = nrfx_spis_buffers_set(&spis_inst, p_tx_buffer, length_tx, p_rx_buffer, length_rx);
     NRFX_ASSERT(status == NRFX_SUCCESS);
 
+    #ifndef HEEPO_USE_TIMER
+    // Start the thread
+    k_thread_create(&HEEPO_thread, HEEPO_thread_stack, K_THREAD_STACK_SIZEOF(HEEPO_thread_stack),
+                    HEEPO_thread_func, NULL, NULL, NULL, HEEPO_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&HEEPO_thread, "HEEPO_thread");
+    #endif
+
     return;
 }
 
-// /*****************************************************************************
-// *****************************************************************************/
+/*****************************************************************************
+*****************************************************************************/
 
 void SPI_Heep_add_fifo(uint8_t *data, size_t size)
 {
@@ -202,8 +229,8 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
     return;
 }
 
-// /*****************************************************************************
-// *****************************************************************************/
+/*****************************************************************************
+*****************************************************************************/
 
 void SPI_Heep_get_fifo()
 {
@@ -223,6 +250,36 @@ void SPI_Heep_get_fifo()
     return;
 }
 
+/*****************************************************************************
+*****************************************************************************/
+
+void SPI_Heep_get_fifo_wait()
+{
+    struct sensor_data_heepo *p_data = k_fifo_get(&heepo_fifo, K_FOREVER);
+    if (p_data != NULL)
+    {
+        memcpy(heepo_next_meas, p_data->data, p_data->size);
+        heepo_next_meas_size = p_data->size;
+        k_free(p_data);
+        heepo_fifo_counter--;
+    }
+    else
+    {
+        heepo_next_meas_size = 0;
+    }
+
+    return;
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+void SPI_Heep_stop_thread(void)
+{
+    HEEPO_stop_thread_flag = true;
+    return;
+}
+
 /****************************************************************************/
 /**                                                                        **/
 /*                            LOCAL FUNCTIONS                               */
@@ -233,20 +290,9 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
 {
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE)
     {
-        nrf_gpio_pin_clear(PIN_HEEPO_RDY);
+        nrf_gpio_pin_clear(PIN_HEEPO_RDY);   
 
-        // if (m_rx_buffer_slave[0] == 0x04)
-        // {
-        //     // LOG_INF("SPIS received 0x04");
-        //     SPI_Heep_get_fifo();
-        //     m_tx_buffer_slave[0] = heepo_next_meas_size;
-        // }
-        // else if (m_rx_buffer_slave[0] == 0x05)
-        // {
-        //     // LOG_INF("SPIS received 0x05");
-        //     memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
-        // }
-        
+        #ifdef HEEPO_USE_TIMER
 
         if (length_sent == false)
         {
@@ -263,20 +309,50 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
             length_sent = false;
         }
 
-
-
-        // char * p_msg = p_context;
-        // LOG_INF("SPIS finished. Context passed to the handler: >%s<", p_msg);
-        // LOG_INF("SPIS rx length: %d", p_event->rx_amount);
-        // LOG_INF("SPIS rx buffer: %s", m_rx_buffer_slave);
         nrfx_spis_buffers_set(&spis_inst,
                               m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
                               m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+        #endif
+        #ifndef HEEPO_USE_TIMER
+        k_sem_give(&HEEPO_XFER_DONE);
+        #endif
     }
     else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE)
     {
         nrf_gpio_pin_set(PIN_HEEPO_RDY);
     }
+    
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+void HEEPO_thread_func(void *arg1, void *arg2, void *arg3)
+{
+    while (HEEPO_stop_thread_flag == false)
+    {
+        k_sem_take(&HEEPO_XFER_DONE, K_FOREVER);
+        if (length_sent == false)
+        {
+            SPI_Heep_get_fifo_wait();
+            m_tx_buffer_slave[0] = heepo_next_meas_size;
+            if (heepo_next_meas_size != 0)
+            {
+                length_sent = true;
+            }
+        }
+        else
+        {
+            memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
+            length_sent = false;
+        }
+
+        nrfx_spis_buffers_set(&spis_inst,
+                              m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
+                              m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+    }
+
+    k_thread_abort(k_current_get());
 }
 
 /****************************************************************************/
