@@ -69,6 +69,19 @@ Description : Original version.
 
 LOG_MODULE_REGISTER(ADS1298, LOG_LEVEL_INF);
 
+// First byte of the ID register
+#define ADS_ID_BYTE1 0x92
+
+// ADS1298 WRITE FLAG BIT
+#define ADS_WRITE_FLAG 0x40
+// ADS1298 READ FLAG BIT
+#define ADS_READ_FLAG 0x20
+
+// ADS storage format header
+#define ADS_STORAGE_HEADER 0xDDDD
+// ADS storage format length
+#define ADS_STORAGE_LEN 25
+
 /****************************************************************************/
 /**                                                                        **/
 /*                        TYPEDEFS AND STRUCTURES                           */
@@ -201,7 +214,7 @@ int ADS1298_check_present(void)
         return -1;
     }
 
-    if (data[2] != 0x92)
+    if (data[2] != ADS_ID_BYTE1)
     {
         LOG_ERR("ADS1298 not present\n");
         return -1;
@@ -247,7 +260,7 @@ int ADS1298_read_reg(uint8_t addr, uint8_t *data)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x20;
+    ads_tx_buf[0] = addr | ADS_READ_FLAG;
     ads_tx_buf[1] = 0x00;
     ads_tx_buf[2] = 0x00;
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TRX(ads_tx_buf, 3, data, 3);
@@ -276,7 +289,7 @@ int ADS1298_write_reg(uint8_t addr, uint8_t data)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x40;
+    ads_tx_buf[0] = addr | ADS_WRITE_FLAG;
     ads_tx_buf[1] = 0x00;
     ads_tx_buf[2] = data;
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TX(ads_tx_buf, 3);
@@ -305,7 +318,7 @@ int ADS1298_read_Nreg(uint8_t addr, uint8_t *data, uint8_t num_reg)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x20;
+    ads_tx_buf[0] = addr | ADS_READ_FLAG;
     ads_tx_buf[1] = num_reg;
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TRX(ads_tx_buf, 2, data, 2+num_reg);
 
@@ -333,7 +346,7 @@ int ADS1298_write_Nreg(uint8_t addr, uint8_t *data, uint8_t num_reg)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x40;
+    ads_tx_buf[0] = addr | ADS_WRITE_FLAG;
     ads_tx_buf[1] = num_reg;
     memcpy(&ads_tx_buf[2], data, num_reg);
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TX(ads_tx_buf, num_reg + 2);
@@ -572,12 +585,12 @@ void ADS1298_thread_func(void *arg1, void *arg2, void *arg3)
             nrf_gpio_pin_clear(27);
         }
 
-        storage_datas[storage_count].header = 0xDDDD;
+        storage_datas[storage_count].header = ADS_STORAGE_HEADER;
         storage_datas[storage_count].rawtime_bin = rawtime_bin;
         storage_datas[storage_count].time_ms_bin = time_ms_bin;
-        storage_datas[storage_count].len = 25;
+        storage_datas[storage_count].len = ADS_STORAGE_LEN;
         storage_datas[storage_count].index = index++;
-        memcpy(storage_datas[storage_count].measurements, &data[4], 24);
+        memcpy(storage_datas[storage_count].measurements, &data[4], ADS_STORAGE_LEN-1);
 
         // Subsampling logic for BLE
         if (index % VCONF_ADS1298_SUBSAMPLING_FACTOR == 0)

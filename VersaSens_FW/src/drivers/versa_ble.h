@@ -81,6 +81,11 @@ Description : Original version.
 #define BLE_CMD_MODE_STORE  0x02
 #define BLE_CMD_MODE_STREAM 0x03
 
+// BLE status
+#define BLE_STATUS_IDLE     0x01
+#define BLE_STATUS_STORE    0x02
+#define BLE_STATUS_STREAM   0x03
+
 /****************************************************************************/
 /**                                                                        **/
 /**                       TYPEDEFS AND STRUCTURES                          **/

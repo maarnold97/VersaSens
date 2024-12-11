@@ -113,6 +113,7 @@ struct time_values get_time_values(void)
 
 void sync_time(void)
 {
+    // Synchronize the time by setting the time_sync_ms to the current uptime
     time_sync_ms = k_uptime_get();
 }
 

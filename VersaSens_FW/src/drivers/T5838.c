@@ -59,6 +59,7 @@ Description : Original version.
 #include "versa_time.h"
 #include "versa_config.h"
 #include "SPI_Heepocrates.h"
+#include "app_data.h"
 
 #include "opus.h"
 #include "opus_types.h"
@@ -72,7 +73,11 @@ Description : Original version.
 
 LOG_MODULE_REGISTER(t5838, LOG_LEVEL_INF);
 
-#define PDM_BUFFER_SIZE        480    /*!< Size of the buffer for PDM frames */
+/*!< Size of the buffer for PDM frames */
+#define PDM_BUFFER_SIZE        480    
+
+// T5838 storage format header
+#define T5838_STORAGE_HEADER 0xAAAA
 
 /****************************************************************************/
 /**                                                                        **/
@@ -174,6 +179,7 @@ int t5838_start(void)
     /*! Start the PDM peripheral */
     status = nrfx_pdm_start();
 
+    // Start the T5838 saving thread
     t5838_start_saving();
 
     return (status == NRFX_SUCCESS)? 0 : -1;
@@ -187,6 +193,7 @@ int t5838_stop(void)
     nrfx_err_t status;
     (void)status; 
 
+    // Stop the T5838 saving thread
     t5838_stop_saving();
 
     /*! Stop the PDM peripheral */
@@ -216,7 +223,10 @@ int t5838_init(void)
     nrfx_pdm_config_t pdm_config = NRFX_PDM_DEFAULT_CONFIG(PDM_CLK_PIN, PDM_DATA_PIN);
     pdm_config.mode = NRF_PDM_MODE_MONO;
     pdm_config.edge = NRF_PDM_EDGE_LEFTFALLING;
-    // pdm_config.clock_freq = NRF_PDM_FREQ_1000K * 0.768;
+
+    // f_pdm = 768000
+    // f_source = 12288000
+    // CLOCK_FREQ = 4096 * ⌊f_pdm * 1048576 / (f_source + f_pdm / 2)⌋
     pdm_config.clock_freq = 260300800;
     pdm_config.ratio = NRF_PDM_RATIO_64X;
     pdm_config.mclksrc = NRF_PDM_MCLKSRC_ACLK;
@@ -234,6 +244,7 @@ int t5838_init(void)
 
 void t5838_start_saving(void)
 {
+    // Start the T5838 saving thread
     save_thread_stop = false;
     k_thread_create(&save_thread, save_thread_stack, K_THREAD_STACK_SIZEOF(save_thread_stack),
                     t5838_save_thread_func, NULL, NULL, NULL, T5838_PRIO, 0, K_NO_WAIT);
@@ -245,6 +256,7 @@ void t5838_start_saving(void)
 
 void t5838_stop_saving(void)
 {
+    // Stop the T5838 saving thread
     save_thread_stop = true;
 }
 
@@ -273,9 +285,9 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
     }
     LOG_INF("Opus encoder configured\n");
 
-    int16_t compressed_frame[PDM_BUFFER_SIZE] = {0};  /*!< Compressed output buffer */
-    uint8_t frame_index = 0;                           /*!< Frame sequence index */
-    storage_format.header = 0xAAAA;                    /*!< Storage header marker */
+    int16_t compressed_frame[PDM_BUFFER_SIZE] = {0};    /*!< Compressed output buffer */
+    uint8_t frame_index = 0;                            /*!< Frame sequence index */
+    storage_format.header = T5838_STORAGE_HEADER;       /*!< Storage header marker */
 
     bool *frame_flags[] = {&frame1_new, &frame2_new, &frame3_new};  /*!< Pointers to frame flags */
     int16_t *frames[] = {t5838_frames.frame1, t5838_frames.frame2, t5838_frames.frame3};  /*!< Frame pointers */

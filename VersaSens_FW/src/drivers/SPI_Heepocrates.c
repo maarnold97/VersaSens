@@ -154,8 +154,8 @@ void SPI_Heepocrates_init(void)
     spis_config.mode = NRF_SPIS_MODE_0;
     spis_config.miso_drive = NRF_GPIO_PIN_S0S1;
 
+    // Initialize the SPIS instance
     nrfx_spis_uninit(&spis_inst);
-
     void * p_context = "Some context";
     status = nrfx_spis_init(&spis_inst, &spis_config, spis_handler, p_context);
     NRFX_ASSERT(status == NRFX_SUCCESS);
@@ -163,9 +163,11 @@ void SPI_Heepocrates_init(void)
     IRQ_DIRECT_CONNECT(NRFX_IRQ_NUMBER_GET(NRF_SPIS_INST_GET(SPIS_INST_IDX)), IRQ_PRIO_LOWEST,
                        NRFX_SPIS_INST_HANDLER_GET(SPIS_INST_IDX), 0);
 
+    // Set the ready pin
     nrf_gpio_cfg_output(PIN_HEEPO_RDY);
     nrf_gpio_pin_clear(PIN_HEEPO_RDY);
 
+    // Start the SPI Heepocrates thread
     SPI_Heepocrates_start(m_tx_buffer_slave, sizeof(m_tx_buffer_slave), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
 
     return;
@@ -179,6 +181,7 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
     nrfx_err_t status;
     (void)status;
 
+    // Assign TX and RX buffers
     if (p_tx_buffer == NULL)
     {
         p_tx_buffer = m_tx_buffer_slave;
@@ -209,10 +212,13 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
 
 void SPI_Heep_add_fifo(uint8_t *data, size_t size)
 {
+    // Check if the FIFO is full
     if(heepo_fifo_counter >= 10)
     {
         return;
     }
+
+    // Allocate a new sensor data
     struct sensor_data_heepo *p_data = k_malloc(sizeof(*p_data));
 
     if (p_data == NULL)
@@ -221,6 +227,7 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
         return;
     }
 
+    // Add the data to the FIFO
     p_data->size = size;
     memcpy(p_data->data, data, size);
     k_fifo_put(&heepo_fifo, p_data);
@@ -234,11 +241,16 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
 
 void SPI_Heep_get_fifo()
 {
+    // Get the data from the FIFO
     struct sensor_data_heepo *p_data = k_fifo_get(&heepo_fifo, K_NO_WAIT);
+
+    // Check if the FIFO is empty
     if (p_data != NULL)
     {
+        // Copy the data to the buffer
         memcpy(heepo_next_meas, p_data->data, p_data->size);
         heepo_next_meas_size = p_data->size;
+        // Free the memory
         k_free(p_data);
         heepo_fifo_counter--;
     }
@@ -255,11 +267,14 @@ void SPI_Heep_get_fifo()
 
 void SPI_Heep_get_fifo_wait()
 {
+    // Get the data from the FIFO
     struct sensor_data_heepo *p_data = k_fifo_get(&heepo_fifo, K_FOREVER);
     if (p_data != NULL)
     {
+        // Copy the data to the buffer
         memcpy(heepo_next_meas, p_data->data, p_data->size);
         heepo_next_meas_size = p_data->size;
+        // Free the memory
         k_free(p_data);
         heepo_fifo_counter--;
     }
@@ -288,15 +303,22 @@ void SPI_Heep_stop_thread(void)
 
 static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
 {
+    // Handle the SPIS event
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE)
     {
+        // Clear the ready pin
         nrf_gpio_pin_clear(PIN_HEEPO_RDY);   
 
+        // Manage the transmission logic if HEEPO_USE_TIMER is defined
         #ifdef HEEPO_USE_TIMER
 
+        // check if the last transfer was a length transfer
         if (length_sent == false)
         {
+            // Get the data from the FIFO
             SPI_Heep_get_fifo();
+            
+            // Put the length in the buffer
             m_tx_buffer_slave[0] = heepo_next_meas_size;
             if (heepo_next_meas_size != 0)
             {
@@ -305,10 +327,12 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
         }
         else
         {
+            // Put the data in the buffer
             memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
             length_sent = false;
         }
 
+        // Set the buffers
         nrfx_spis_buffers_set(&spis_inst,
                               m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
                               m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
@@ -319,6 +343,7 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
     }
     else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE)
     {
+        // Set the ready pin
         nrf_gpio_pin_set(PIN_HEEPO_RDY);
     }
     
@@ -331,10 +356,16 @@ void HEEPO_thread_func(void *arg1, void *arg2, void *arg3)
 {
     while (HEEPO_stop_thread_flag == false)
     {
+        // Wait for the transfer to be done
         k_sem_take(&HEEPO_XFER_DONE, K_FOREVER);
+
+        // check if the last transfer was a length transfer
         if (length_sent == false)
         {
+            // Get the data from the FIFO
             SPI_Heep_get_fifo_wait();
+
+            // Put the length in the buffer
             m_tx_buffer_slave[0] = heepo_next_meas_size;
             if (heepo_next_meas_size != 0)
             {
@@ -343,10 +374,12 @@ void HEEPO_thread_func(void *arg1, void *arg2, void *arg3)
         }
         else
         {
+            // Put the data in the buffer
             memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
             length_sent = false;
         }
 
+        // Set the buffers
         nrfx_spis_buffers_set(&spis_inst,
                               m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
                               m_rx_buffer_slave, sizeof(m_rx_buffer_slave));

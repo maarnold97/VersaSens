@@ -69,22 +69,22 @@ LOG_MODULE_REGISTER(storage, LOG_LEVEL_INF);
 #define DISK_DRIVE_NAME "SD"
 #define DISK_MOUNT_PT "/"DISK_DRIVE_NAME":"
 
-#define MAX_PATH 128
-#define SOME_REQUIRED_LEN MAX(sizeof(SOME_FILE_NAME), sizeof(SOME_DIR_NAME))
-
 /****************************************************************************/
 /**                                                                        **/
 /*                        TYPEDEFS AND STRUCTURES                           */
 /**                                                                        **/
 /****************************************************************************/
 
+// FATFS file system object
 static FATFS fat_fs;
+
 /*! mounting info */
 static struct fs_mount_t mp = {
 	.type = FS_FATFS,
 	.fs_data = &fat_fs,
 };
 
+// Double buffer for used to store data before writing to the storage
 struct{
     int8_t fifo_buffer1[FIFO_BUFFER_SIZE];
     int8_t fifo_buffer2[FIFO_BUFFER_SIZE];
@@ -131,6 +131,7 @@ void my_timer_handler(struct k_timer *dummy);
 /**                                                                        **/
 /****************************************************************************/
 
+// Current FIFO buffer
 int8_t *fifo_buffer = fifo_buffers.fifo_buffer1;
 int fifo_buffer_index = 0;
 
@@ -140,23 +141,26 @@ int fifo_buffer_index = 0;
 /**                                                                        **/
 /****************************************************************************/
 
+// Path to the disk mount point
 static const char *disk_mount_pt = DISK_MOUNT_PT;
 
+// Thread stack and instance
 K_THREAD_STACK_DEFINE(fifo_thread_stack, 1024);
 struct k_thread fifo_thread;
 
+// File system objects
 struct fs_file_t save_file;
 
+// Flags
 bool writing_in_progress = false;
 bool fifo_busy = false;
-
 bool write_failed = false;
-
-K_WORK_DEFINE(my_work, timer_work_handler);
-
-K_TIMER_DEFINE(my_timer, my_timer_handler, NULL);
-
 bool sync_flag = false;
+
+// Work object
+K_WORK_DEFINE(my_work, timer_work_handler);
+// Timer object
+K_TIMER_DEFINE(my_timer, my_timer_handler, NULL);
 
 /****************************************************************************/
 /**                                                                        **/
@@ -191,70 +195,6 @@ int storage_init(void)
     k_timer_start(&my_timer, K_SECONDS(PERIOD_SYNC), K_SECONDS(PERIOD_SYNC));
 
     return 0;
-}
-
-/***************************************************************************/
-/***************************************************************************/
-
-int delete_directory(const char *path) {
-    struct fs_dir_t dir;
-    struct fs_dirent entry;
-    int res;
-
-    fs_dir_t_init(&dir);
-
-    res = fs_opendir(&dir, path);
-    if (res != 0) {
-        LOG_ERR("Error opening directory %s %d\n", path, res);
-
-        /*! Erase the flash */
-        const struct device *flash_dev = DEVICE_DT_GET(DT_NODELABEL(mx25r64));
-        int ret = flash_erase(flash_dev, 0, 4096);
-
-        if (ret != 0) {
-            printk("Failed to erase flash\n");
-            return ret;
-        }
-
-        printk("Flash erased successfully\n");
-        return res;
-    }
-
-    while (1) {
-        res = fs_readdir(&dir, &entry);
-        char new_path[256];
-
-        if (entry.name[0] == 0) {
-            printk("End of directory\n");
-            break;
-        }
-
-        snprintf(new_path, sizeof(new_path), "%s/%s", path, entry.name);
-
-        if (entry.type == FS_DIR_ENTRY_DIR) {
-            res = delete_directory(new_path);
-            if (res != 0) {
-                break;
-            }
-        }
-
-        res = fs_unlink(new_path);
-        if (res != 0) {
-            break;
-        }
-    }
-
-    fs_closedir(&dir);
-
-    return res;
-}
-
-/***************************************************************************/
-/***************************************************************************/
-
-int flash_erase_all(void) {
-    const struct device *flash_dev = DEVICE_DT_GET(DT_NODELABEL(mx25r64));
-    return flash_erase(flash_dev, 0, 4096);
 }
 
 /***************************************************************************/
@@ -306,6 +246,7 @@ int storage_read(const char *file_name, const char *path, uint8_t *data, size_t 
 
 int storage_add_to_fifo(uint8_t *data, size_t size)
 {
+    // Check if the FIFO is busy
     while(writing_in_progress)
     {
         k_sleep(K_USEC(1));
@@ -314,6 +255,7 @@ int storage_add_to_fifo(uint8_t *data, size_t size)
 
     size_t bytes_written = 0; // Number of bytes written so far
 
+    // Write the data to the FIFO buffer
     while (bytes_written < size)
     {
         size_t bytes_to_write = MIN(FIFO_BUFFER_SIZE - fifo_buffer_index, size - bytes_written);
@@ -330,6 +272,8 @@ int storage_add_to_fifo(uint8_t *data, size_t size)
                 fifo_buffer = fifo_buffers.fifo_buffer1;
 
             fifo_buffer_index = 0;
+
+            // Start the thread to write the FIFO buffer to the storage
             k_thread_create(&fifo_thread, fifo_thread_stack, K_THREAD_STACK_SIZEOF(fifo_thread_stack),
                             write_fifo_to_storage, NULL, NULL, NULL, STORAGE_PRIO, 0, K_NO_WAIT);
             k_thread_name_set(&fifo_thread, "Storage Thread");
@@ -389,11 +333,13 @@ void storage_open_file(int conf)
 void storage_close_file(void)
 {
     writing_in_progress = true;
+    // write the remaining data to the storage
      if (fs_write(&save_file, fifo_buffer, fifo_buffer_index) != fifo_buffer_index) {
         LOG_ERR("Failed to write to file");
     }
     writing_in_progress = false;
 
+    // Close the file
     fs_close(&save_file);
     return;
 }
@@ -481,7 +427,7 @@ int lsdir(const char *path)
 
 	fs_dir_t_init(&dirp);
 
-	/*! Verify fs_opendir() */
+	// Open the directory
 	res = fs_opendir(&dirp, full_path);
 	if (res) {
 		printk("Error opening dir %s [%d]\n", full_path, res);
@@ -490,7 +436,7 @@ int lsdir(const char *path)
 
 	printk("\nListing dir %s ...\n", full_path);
 	for (;;) {
-		/*! Verify fs_readdir() */
+		// Read an entry from the directory
 		res = fs_readdir(&dirp, &entry);
 
 		/*! entry.name[0] == 0 means end-of-dir */
@@ -498,6 +444,7 @@ int lsdir(const char *path)
 			break;
 		}
 
+        // Print the entry name
 		if (entry.type == FS_DIR_ENTRY_DIR) {
 			printk("[DIR ] %s\n", entry.name);
 		} else {
@@ -507,7 +454,7 @@ int lsdir(const char *path)
 		count++;
 	}
 
-	/*! Verify fs_closedir() */
+	// Close the directory
 	fs_closedir(&dirp);
 	if (res == 0) {
 		res = count;
@@ -531,12 +478,12 @@ bool get_write_failed(void)
 /****************************************************************************/
 
 void write_fifo_to_storage(void *arg1, void *arg2, void *arg3){
+    // Select the buffer to write
     uint8_t *fifo_buffer_write = NULL;
     if(fifo_buffer == fifo_buffers.fifo_buffer1)
         fifo_buffer_write = fifo_buffers.fifo_buffer2;
     else
         fifo_buffer_write = fifo_buffers.fifo_buffer1;
-    // check if disk busy 
     
     /*! Write the file */
     if (fs_write(&save_file, fifo_buffer_write, FIFO_BUFFER_SIZE) != FIFO_BUFFER_SIZE) {
@@ -544,6 +491,7 @@ void write_fifo_to_storage(void *arg1, void *arg2, void *arg3){
         write_failed = true;
     }
 
+    // Sync the file system
     if (sync_flag)
     {
         fs_sync(&save_file);
@@ -558,6 +506,7 @@ void write_fifo_to_storage(void *arg1, void *arg2, void *arg3){
 
 void timer_work_handler(struct k_work *work)
 {
+    // Set the sync flag
     sync_flag = true;
 }
 

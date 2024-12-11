@@ -58,6 +58,7 @@ Description : Original version.
 #include "versa_ble.h"
 #include "versa_config.h"
 #include "SPI_Heepocrates.h"
+#include "app_data.h"
 
 
 
@@ -68,6 +69,11 @@ Description : Original version.
 /****************************************************************************/
 
 LOG_MODULE_REGISTER(mlx90632, LOG_LEVEL_INF);
+
+// MLX90632 storage format header
+#define MLX_STORAGE_HEADER 0xBBBB
+// MLX90632 storage format length
+#define MLX_STORAGE_LEN 9
 
 /****************************************************************************/
 /**                                                                        **/
@@ -98,13 +104,16 @@ void mlx90632_thread_func(void *arg1, void *arg2, void *arg3);
 /**                                                                        **/
 /****************************************************************************/
 
+// MLX90632 math parameters
 volatile MLX90632_MATH_PARAM math_param;
+
 volatile MLX90632_REG mlx_reg;
 volatile MLX90632_RAM_DATA ram_data; 
 
 /*! Last cycle position */
 int last_CycPos = 0;
 
+// MLX90632 temperature values
 float AmbientTemperature;
 float ObjectTemperature;
 
@@ -139,7 +148,9 @@ MLX90632_StorageFormat format;
 
 int mlx90632_read_reg(uint16_t addr, uint8_t *data, uint8_t reg_size)
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     /*! Write the address in the tx buffer */
     tx_buffer[0] = (addr >> 8) & 0xFF;
     tx_buffer[1] = addr & 0xFF;
@@ -149,7 +160,10 @@ int mlx90632_read_reg(uint16_t addr, uint8_t *data, uint8_t reg_size)
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -159,7 +173,9 @@ int mlx90632_read_reg(uint16_t addr, uint8_t *data, uint8_t reg_size)
 
 int mlx90632_write_reg(uint16_t addr, uint16_t data)
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     /*! Write the address and data in the tx buffer */
     tx_buffer[0] = (addr >> 8) & 0xFF;
     tx_buffer[1] = addr & 0xFF;
@@ -171,7 +187,10 @@ int mlx90632_write_reg(uint16_t addr, uint16_t data)
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -181,7 +200,9 @@ int mlx90632_write_reg(uint16_t addr, uint16_t data)
 
 int mlx90632_reset(void)
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     /*! Write the reset command in the tx buffer */
     tx_buffer[0] = 0x30;
     tx_buffer[1] = 0x05;
@@ -193,7 +214,10 @@ int mlx90632_reset(void)
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -203,7 +227,9 @@ int mlx90632_reset(void)
 
 int mlx90632_read_seq_reg(uint16_t start_addr, uint8_t *data, uint8_t num_bytes) 
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     /*! Write the initial address in the tx buffer */
     tx_buffer[0] = (start_addr >> 8) & 0xFF;
     tx_buffer[1] = start_addr & 0xFF;
@@ -213,7 +239,10 @@ int mlx90632_read_seq_reg(uint16_t start_addr, uint8_t *data, uint8_t num_bytes)
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -223,7 +252,9 @@ int mlx90632_read_seq_reg(uint16_t start_addr, uint8_t *data, uint8_t num_bytes)
 
 int mlx90632_write_seq_reg(uint16_t start_addr, const uint8_t *data, uint8_t num_bytes) 
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     /*! Check if the number of bytes is greater than the maximum size */
     if (num_bytes > MAX_SIZE_TRANSFER) {
         return -1;
@@ -239,7 +270,10 @@ int mlx90632_write_seq_reg(uint16_t start_addr, const uint8_t *data, uint8_t num
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -249,7 +283,9 @@ int mlx90632_write_seq_reg(uint16_t start_addr, const uint8_t *data, uint8_t num
 
 int mlx90632_eeprom_unlock(void)
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     /*! Write the unlock command in the tx buffer */
     tx_buffer[0] = 0x30;
     tx_buffer[1] = 0x05;
@@ -261,7 +297,10 @@ int mlx90632_eeprom_unlock(void)
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -443,8 +482,8 @@ int mlx90632_stop_continuous_read(void)
 
 void mlx90632_thread_func(void *arg1, void *arg2, void *arg3)
 {
-    format.header = 0xBBBB;
-    uint8_t len = 9;
+    format.header = MLX_STORAGE_HEADER;
+    uint8_t len = MLX_STORAGE_LEN;
     uint8_t index = 0;
     
     while (!MLX90632_stop_thread)
@@ -506,6 +545,7 @@ void mlx90632_thread_func(void *arg1, void *arg2, void *arg3)
                 log_float(AmbientTemperature);
                 log_float(ObjectTemperature); 
 
+                // Format the data to be stored
                 format.rawtime_bin = rawtime_bin;
                 format.time_ms_bin = time_ms_bin;
                 format.len = len;
@@ -513,7 +553,7 @@ void mlx90632_thread_func(void *arg1, void *arg2, void *arg3)
                 format.AmbientTemperature = AmbientTemperature;
                 format.ObjectTemperature = ObjectTemperature;
 
-
+                /*! Save the measurements */
                 int ret = storage_add_to_fifo((uint8_t *)&format, sizeof(format));
                 if (ret != 0)
                 {
