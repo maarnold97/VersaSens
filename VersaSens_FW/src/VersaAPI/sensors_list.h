@@ -63,6 +63,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/   
 
+// Sensor IDs
 #define ADS1298_ID     0
 #define BNO086_ID      1
 #define MAX30001_ID    2
@@ -70,6 +71,7 @@ Description : Original version.
 #define MLX90632_ID    4
 #define T5838_ID       5
 
+// Module IDs
 #define MAIN_MODULE_ID       0
 #define HEART_MODULE_ID    1
 #define EXG_MODULE_ID        2
@@ -82,6 +84,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
+// Sensor structure
 typedef struct {
     int module_id;
     int (*init)(void);

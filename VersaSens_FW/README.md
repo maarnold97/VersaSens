@@ -26,6 +26,9 @@
    - Connect the programmer to your computer.
    - Using the interface provided by NRF Connect for VS Code, select the **Flash** action to upload the firmware to the device.
 
+To flash the VersaSens, connect it to an nRF5340DK used as a programmer. The image below shows how the programming pins should be connected to the nRF5340DK.
+![screenshot](ImageFolder/Pin_programmer.png)
+
 ## 📄 Firmware Description
 
 ### 📂 Drivers
@@ -44,7 +47,7 @@ The current version of the firmware implements drivers for the following sensors
 ### 📚 API
 The VersaSens API manages the initialization of the VersaSens, the operating modes, and the switch and LEDs present on the main module.
 
-### VersaAPI Functions
+#### VersaAPI Functions
 The following functions are available:
 - **versa_start_led_thread**: Starts the LED thread that indicates the status of the device.
 - **versa_start_mode_thread**: Starts the mode thread that manages the mode depending on the switch of the main board.
@@ -54,6 +57,14 @@ The following functions are available:
 - **versa_sensor_stop**: Stops the continuous reading of the sensors marked as active.
 - **enable_auto_connect**: Starts the thread that automatically initializes new modules when they are connected.
 - **disable_auto_connect**: Stops the thread that automatically initializes new modules when they are connected.
+
+#### Versa Config
+The following configuration options are available in the file `src/VersaAPI/versa_config.h`:
+- Enabling the drivers of the different sensors
+- Selecting which sensor data should be sent to the application running on the VersaSens
+- Selecting which sensor data should be sent to the Heepo module
+- Selecting the frequency, gain, and subsampling factor for the ADS1298
+- Selecting the type of data measured by the MAX30001
 
 ## 🎛️ Controls and Operating Modes
 The firmware supports three operating modes:
@@ -86,6 +97,10 @@ The following 1-byte commands can be used to control the mode of the VersaSens:
 - `0x09`: Disable the overwriting of the switch by the BLE commands
 
 The command should be written to the Command Characteristic. An acknowledgment will be returned as an indication with the following format: `cmd sent + 0xA0`.
+
+## 📈 Data Visualization
+
+A Python notebook is available in the `python_notebook` folder. To visualize the data, add the file containing the measurements to the same folder and specify the file path in cell 2 of the notebook. The notebook provides data visualization for all supported sensors.
 
 ## 📊 Data Format
 
@@ -194,7 +209,7 @@ In this section, you can find the details of the data format used for saving sen
 | **Index**              | uint8     | 1               | Index incrementing with each frame         | 45                  |
 | **FIFO Data**          | struct    | 150             | Content of the MAX86178 FIFO               | b0 8b 09 e0 00 06 00 00 02 10 00 01 2f ff fd 30 00 b6 b0 83 31 e8 00 06 9f ff aa b0 80 54 e0 00 06 0f ff fe 10 00 02 20 00 02 30 00 86 b0 81 23 e8 00 06 9f ff 9f b0 80 30 e0 00 06 0f ff fd 1f ff fc 20 00 02 30 00 ad b0 80 eb e8 00 06 9f ff 96 b0 82 c2 e0 00 06 00 00 00 1f ff fb 20 00 00 30 00...
 
-#### Compressed Frame Format
+#### FIFO Data Headers
 
 | Header | Measurement       |
 |--------|-------------------|
