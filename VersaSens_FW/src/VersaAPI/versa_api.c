@@ -208,6 +208,7 @@ int versa_init(void)
     nrf_gpio_cfg_output(START_PIN);
     nrf_gpio_pin_clear(START_PIN);
 
+    #ifndef MAX30001_DISABLE
     // If the MAX30001 is enabled, initialize it
     if(vconf_max30001_en)
     {
@@ -218,9 +219,11 @@ int versa_init(void)
             vconf_max30001_en = 0;
         }
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef MAX86178_DISABLE
     // If the MAX77658 is enabled, initialize it
     if(vconf_max86178_en)
     {
@@ -233,25 +236,31 @@ int versa_init(void)
             vconf_mlx90632_en = 0;
         }
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef BNO086_DISABLE
     // If the BNO086 is enabled, initialize it
     if(vconf_bno086_en)
     {
         sensors_list[BNO086_ID].init();
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef T5838_DISABLE
     // If the T5838 is enabled, initialize it
     if(vconf_t5838_en)
     {
         sensors_list[T5838_ID].init();
     }
+    #endif
     
     k_sleep(K_MSEC(50));
 
+    #ifndef ADS1298_DISABLE
     // If the ADS1298 is enabled, initialize it
     if(vconf_ads1298_en)
     {
@@ -262,14 +271,17 @@ int versa_init(void)
             vconf_ads1298_en = 0;
         }
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef MLX90632_DISABLE
     // If the MLX90632 is enabled, initialize it
     if(vconf_mlx90632_en)
     {
         sensors_list[MLX90632_ID].init();
     }
+    #endif
 
     // Set the status to idle
     set_status(BLE_STATUS_IDLE);
@@ -309,6 +321,7 @@ int disable_auto_connect(void)
 
 int versa_config(void)
 {
+    #ifndef ADS1298_DISABLE
     // If the ADS1298 is enabled, configure it
     if(vconf_ads1298_en)
     {
@@ -316,9 +329,11 @@ int versa_config(void)
             sensors_list[ADS1298_ID].config();
         }
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef MAX30001_DISABLE
     // If the MAX30001 is enabled, configure it
     if(vconf_max30001_en)
     {
@@ -326,9 +341,11 @@ int versa_config(void)
             sensors_list[MAX30001_ID].config();
         }
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef MLX90632_DISABLE
     // If the MLX90632 is enabled, configure it
     if(vconf_mlx90632_en)
     {
@@ -336,9 +353,11 @@ int versa_config(void)
             sensors_list[MLX90632_ID].config();
         }
     }
+    #endif
 
     k_sleep(K_MSEC(50));
 
+    #ifndef MAX86178_DISABLE
     // If the MAX86178 is enabled, configure it
     if(vconf_max86178_en)
     {
@@ -346,6 +365,7 @@ int versa_config(void)
             sensors_list[MAX86178_ID].config();
         }
     }
+    #endif
 
     LOG_INF("Versa API sensors configured\n");
     return 0;
@@ -372,41 +392,53 @@ int versa_sensor_start(void)
         MAX77658_start_continuous_read();
     }
 
+    #ifndef ADS1298_DISABLE
     // If the ADS1298 is enabled, start the continuous read
     if(vconf_ads1298_en)
     {
         sensors_list[ADS1298_ID].start_continuous();
     }
+    #endif
 
+    #ifndef MAX30001_DISABLE
     // If the MAX30001 is enabled, start the continuous read
     if(vconf_max30001_en)
     {
         sensors_list[MAX30001_ID].start_continuous();
     }
+    #endif
 
+    #ifndef BNO086_DISABLE
     // If the BNO086 is enabled, start the continuous read
     if(vconf_bno086_en)
     {
         sensors_list[BNO086_ID].start_continuous();
     }
+    #endif
 
+    #ifndef T5838_DISABLE
     // If the T5838 is enabled, start the continuous read
     if(vconf_t5838_en)
     {
         sensors_list[T5838_ID].start_continuous();
     }
+    #endif
 
+    #ifndef MLX90632_DISABLE
     // If the MLX90632 is enabled, start the continuous read
     if(vconf_mlx90632_en)
     {
         sensors_list[MLX90632_ID].start_continuous();
     }
+    #endif
 
+    #ifndef MAX86178_DISABLE
     // If the MAX86178 is enabled, start the continuous read
     if(vconf_max86178_en)
     {
         sensors_list[MAX86178_ID].start_continuous();
     }
+    #endif
 
     LOG_INF("Versa API sensors started\n");
     return 0;
@@ -426,41 +458,53 @@ int versa_sensor_stop(void)
         MAX77658_stop_continuous_read();
     }
 
+    #ifndef ADS1298_DISABLE
     // If the ADS1298 is enabled, stop the continuous read
     if(vconf_ads1298_en)
     {
         sensors_list[ADS1298_ID].stop_continuous();
     }
+    #endif
 
+    #ifndef MAX30001_DISABLE
     // If the MAX30001 is enabled, stop the continuous read
     if(vconf_max30001_en)
     {
         sensors_list[MAX30001_ID].stop_continuous();
     }
+    #endif
 
+    #ifndef BNO086_DISABLE
     // If the BNO086 is enabled, stop the continuous read
     if(vconf_bno086_en)
     {
         sensors_list[BNO086_ID].stop_continuous();
     }
+    #endif
 
+    #ifndef T5838_DISABLE
     // If the T5838 is enabled, stop the continuous read
     if(vconf_t5838_en)
     {
         sensors_list[T5838_ID].stop_continuous();
     }
+    #endif
 
+    #ifndef MLX90632_DISABLE
     // If the MLX90632 is enabled, stop the continuous read
     if(vconf_mlx90632_en)
     {
         sensors_list[MLX90632_ID].stop_continuous();
     }
+    #endif
 
+    #ifndef MAX86178_DISABLE
     // If the MAX86178 is enabled, stop the continuous read
     if(vconf_max86178_en)
     {
         sensors_list[MAX86178_ID].stop_continuous();
     }
+    #endif
 
     // Close the storage file
     storage_close_file();
@@ -660,6 +704,8 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
     int ret;
     while(!new_module_thread_stop){
         k_sleep(K_MSEC(3000));
+
+        #ifndef ADS1298_DISABLE
         // Try to initialize the ADS1298
         if(!vconf_ads1298_en){
             ret = sensors_list[ADS1298_ID].init();
@@ -670,6 +716,9 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
                 sensors_list[ADS1298_ID].config();
             }
         }
+        #endif
+
+        #ifndef MAX30001_DISABLE
         // Try to initialize the MAX30001
         if(!vconf_max30001_en){
             ret = sensors_list[MAX30001_ID].init();
@@ -680,6 +729,9 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
                 sensors_list[MAX30001_ID].config();
             }
         }
+        #endif
+
+        #ifndef MAX86178_DISABLE
         // Try to initialize the MAX86178
         if(!vconf_max86178_en){
             ret = sensors_list[MAX86178_ID].init();
@@ -689,19 +741,28 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
                 vconf_max86178_en = 1;
                 sensors_list[MAX86178_ID].config();
 
+                #ifndef T5838_DISABLE
                 vconf_t5838_en = 1;
                 sensors_list[T5838_ID].init();
+                #endif
 
+                #ifndef MLX90632_DISABLE
                 vconf_mlx90632_en = 1;
                 sensors_list[MLX90632_ID].init();
                 sensors_list[MLX90632_ID].config();
+                #endif
             }
         }
+        #endif
+
+        #ifndef BNO086_DISABLE
         // Try to initialize the BNO086
         if(!vconf_bno086_en){
             vconf_bno086_en = 1;
             sensors_list[BNO086_ID].init();
         }
+        #endif
+
         // Try to initialize the MAX77658
         if(!vconf_max77658_en){
             vconf_max77658_en = 1;
