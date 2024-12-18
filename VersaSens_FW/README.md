@@ -26,8 +26,33 @@
    - Connect the programmer to your computer.
    - Using the interface provided by NRF Connect for VS Code, select the **Flash** action to upload the firmware to the device.
 
-To flash the VersaSens, connect it to an nRF5340DK used as a programmer. The image below shows how the programming pins should be connected to the nRF5340DK.
-![screenshot](ImageFolder/Pin_programmer.png)
+To flash the VersaSens, connect it to an nRF5340DK used as a programmer. 
+The image below shows how the programming pins should be connected to the nRF5340DK.
+
+<img src="ImageFolder/Pin_programmer.png" alt="screenshot" width="250"/>
+
+### Build options
+
+To optimize memory usage, you can exclude specific sensors from the build by defining the corresponding disable macros in the `sensors_list.h` file. This will prevent the firmware from including the drivers and logic for the excluded sensors, reducing the overall memory footprint.
+
+#### How to Exclude Sensors
+
+1. Open the `sensors_list.h` file.
+2. Uncomment the `#define` statement for the sensor you want to exclude.
+
+For example, to exclude the `ADS1298` and `T5838` sensors, modify the file as follows:
+
+```c
+// Use this define to exclude a sensor from the build
+#define ADS1298_DISABLE
+// #define BNO086_DISABLE
+// #define MAX30001_DISABLE
+// #define MAX86178_DISABLE
+// #define MLX90632_DISABLE
+#define T5838_DISABLE 
+```
+
+By excluding unnecessary sensors, you can significantly reduce the memory usage of the firmware, making it more efficient and better suited for your specific application. 
 
 ## 📄 Firmware Description
 
@@ -240,29 +265,6 @@ In this section, you can find the details of the data format used for saving sen
 | **SOC**                | int16     | 2               | State of charge of the battery (0xFFFF = 100%; 0x0000 = 0%) | d6 ed f9            |
 
 </details>
-
-## 🚀 Reducing Memory Usage on Build
-
-To optimize memory usage, you can exclude specific sensors from the build by defining the corresponding disable macros in the `sensors_list.h` file. This will prevent the firmware from including the drivers and logic for the excluded sensors, reducing the overall memory footprint.
-
-### How to Exclude Sensors
-
-1. Open the `sensors_list.h` file.
-2. Uncomment the `#define` statement for the sensor you want to exclude.
-
-For example, to exclude the `ADS1298` and `T5838` sensors, modify the file as follows:
-
-```c
-// Use this define to exclude a sensor from the build
-#define ADS1298_DISABLE
-// #define BNO086_DISABLE
-// #define MAX30001_DISABLE
-// #define MAX86178_DISABLE
-// #define MLX90632_DISABLE
-#define T5838_DISABLE 
-```
-
-By excluding unnecessary sensors, you can significantly reduce the memory usage of the firmware, making it more efficient and better suited for your specific application. 
 
 ## ⚠️ Known Issues
 - The initialization of a storage file on the SD card can take a variable amount of time, which increases with the number of files already present. This can result in delays when switching modes.
