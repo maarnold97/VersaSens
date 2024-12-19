@@ -6,7 +6,7 @@
 ** project  : VersaSens                                                        **
 ** filename : MAX77658.h                                                   **
 ** version  : 1                                                            **
-** date     : DD/MM/21                                                     **
+** date     : DD/MM/YY                                                     **
 **                                                                         **
 *****************************************************************************
 **                                                                         **
@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
