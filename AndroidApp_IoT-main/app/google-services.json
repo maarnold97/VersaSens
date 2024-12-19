@@ -1,8 +1,10 @@
+// TODO: Modify this File. It is automaticaly generated from FireBase webpage
+// Please refer to https://firebase.google.com/docs/database?hl=it for instructions
 {
   "project_info": {
-    "project_number": "681236330678",
-    "project_id": "androidappiot",
-    "storage_bucket": "androidappiot.appspot.com",
+    "project_number": "XXXXXXX",
+    "project_id": "XXXXXXX",
+    "storage_bucket": "XXXXXXX.appspot.com",
     "firebase_url": "https://androidappiot-default-rtdb.europe-west1.firebasedatabase.app/"
   },
   "client": [
@@ -16,7 +18,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDUh6oZ8KqXUMjjcj_IhzXacvnk5X0CXzA"
+          "current_key": "XXXXXXX"
         }
       ],
       "services": {
