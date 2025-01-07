@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
@@ -83,6 +83,9 @@ Description : Original version.
 
 /*Priority of the storage thread */
 #define STORAGE_PRIO        K_PRIO_PREEMPT(10)
+
+/*Priority of the HEEPO thread */
+#define HEEPO_PRIO          K_PRIO_PREEMPT(5)
 
 
 

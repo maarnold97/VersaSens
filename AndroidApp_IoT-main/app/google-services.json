@@ -1,0 +1,32 @@
+// TODO: Modify this File. It is automaticaly generated from FireBase webpage
+// Please refer to https://firebase.google.com/docs/database?hl=it for instructions
+{
+  "project_info": {
+    "project_number": "XXXXXXX",
+    "project_id": "XXXXXXX",
+    "storage_bucket": "XXXXXXX.appspot.com",
+    "firebase_url": "https://androidappiot-default-rtdb.europe-west1.firebasedatabase.app/"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:681236330678:android:c95b3b89783a635a39ce17",
+        "android_client_info": {
+          "package_name": "com.example.simple_ble"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "XXXXXXX"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -13,6 +13,11 @@
     pinctrl-0 = <&i2c_master>;
 };
 
+&i2c1 {
+    status = "disabled";
+};
+
+
 &uart1 {
     status = "disabled";
     compatible = "nordic,nrf-uarte";
@@ -59,4 +64,17 @@
         compatible = "zephyr,cdc-acm-uart";
         label = "CDC_ACM_0";
     };
+};
+
+
+&spi0 {
+    status = "okay";
+    compatible = "nordic,nrf-spis";
+    pinctrl-0 = <&spi_heepo>;
+    pinctrl-names = "default";
+    def-char = <0x00>;
+};
+
+&uart0 {
+    status = "disabled";
 };

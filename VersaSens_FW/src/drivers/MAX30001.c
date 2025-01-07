@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
@@ -58,6 +58,8 @@ Description : Original version.
 #include "storage.h"
 #include "versa_ble.h"
 #include "spim_inst.h"
+#include "SPI_Heepocrates.h"
+#include "app_data.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -66,6 +68,11 @@ Description : Original version.
 /****************************************************************************/
 
 LOG_MODULE_REGISTER(MAX30001, LOG_LEVEL_INF);
+
+// MAX30001 storage format header
+#define MAX30001_STORAGE_HEADER 0xEEEE
+// MAX30001 storage format length
+#define MAX30001_STORAGE_LEN 7
 
 /****************************************************************************/
 /**                                                                        **/
@@ -79,6 +86,13 @@ LOG_MODULE_REGISTER(MAX30001, LOG_LEVEL_INF);
 /**                                                                        **/
 /****************************************************************************/
 
+/**
+ * @brief Function to handle the MAX30001 thread
+ * 
+ * @param arg1 A pointer to the first argument passed to the thread.
+ * @param arg2 A pointer to the second argument passed to the thread.
+ * @param arg3 A pointer to the third argument passed to the thread.
+ */
 void MAX30001_thread_func(void *arg1, void *arg2, void *arg3);
 
 /****************************************************************************/
@@ -118,6 +132,7 @@ int MAX30001_init(void)
     int ret_val = 0;
     nrfx_spim_config_t max_spim_config = NRFX_SPIM_DEFAULT_CONFIG(MAX_SCK_PIN, MAX_MOSI_PIN, MAX_MISO_PIN, MAX_SS_PIN);
 
+    // Initialize the SPIM instance
     nrfx_err_t err_code = nrfx_spim_init(&max_spim_inst, &max_spim_config, NULL, NULL);
     if (err_code != NRFX_SUCCESS)
     {
@@ -127,6 +142,7 @@ int MAX30001_init(void)
 
     k_sleep(K_MSEC(100));
 
+    // Check if the MAX30001 is connected
     if(MAX30001_check_present() != 0)
     {
         ret_val = -2;
@@ -144,10 +160,13 @@ int MAX30001_check_present(void)
 {
     uint8_t data_read[4];
     data_read[1] = 0x00;
+    // Blank read to avoid wrong values just after reset
     MAX30001_normal_read(REG_INFO_Addr, data_read);
     k_sleep(K_MSEC(10));
     MAX30001_normal_read(REG_INFO_Addr, data_read);
     k_sleep(K_MSEC(10));
+
+    // Check if the MAX30001 is present by reading the INFO register
     MAX30001_normal_read(REG_INFO_Addr, data_read);
     if ((uint8_t)(data_read[1] & 0xF0) == 0x50)
     {
@@ -156,7 +175,7 @@ int MAX30001_check_present(void)
     }
     else
     {
-        LOG_ERR("MAX30001_check_present: NOK");
+        LOG_ERR("MAX30001_check_present: NOT OK");
         return 1;
     }
 
@@ -169,6 +188,7 @@ int MAX30001_reconfig(void)
 {
     nrfx_spim_config_t max_spim_config = NRFX_SPIM_DEFAULT_CONFIG(MAX_SCK_PIN, MAX_MOSI_PIN, MAX_MISO_PIN, MAX_SS_PIN);
 
+    // Reconfigure the SPIM instance for the MAX30001
     nrfx_err_t err_code = nrfx_spim_reconfigure(&max_spim_inst, &max_spim_config);
     if (err_code != NRFX_SUCCESS)
     {
@@ -185,12 +205,16 @@ int MAX30001_reconfig(void)
 
 int MAX30001_normal_read(uint8_t addr, uint8_t *data)
 {
+    // Take the SPI semaphore
     k_sem_take(&spi_sem, K_FOREVER);
+
     max_tx_buf[0] = addr<<1 | 0x01;
     nrfx_spim_xfer_desc_t xfer = NRFX_SPIM_XFER_TRX(max_tx_buf, 1, data, 4); 
 
+    // Reconfigure the SPIM instance
     MAX30001_reconfig();
 
+    // Perform the SPI transfer
     nrfx_err_t err_code = nrfx_spim_xfer(&max_spim_inst, &xfer, 0);
     if (err_code != NRFX_SUCCESS)
     {
@@ -198,6 +222,7 @@ int MAX30001_normal_read(uint8_t addr, uint8_t *data)
         return -1;
     }
 
+    // Release the SPI semaphore
     k_sem_give(&spi_sem);
 
     return 0;
@@ -208,6 +233,7 @@ int MAX30001_normal_read(uint8_t addr, uint8_t *data)
 
 int MAX30001_normal_write(uint8_t addr, uint8_t *data)
 {
+    // Take the SPI semaphore
     k_sem_take(&spi_sem, K_FOREVER);
     max_tx_buf[0] = addr<<1 | 0x00;
     
@@ -219,8 +245,10 @@ int MAX30001_normal_write(uint8_t addr, uint8_t *data)
 
     nrfx_spim_xfer_desc_t xfer = NRFX_SPIM_XFER_TX(max_tx_buf, 4);
 
+    // Reconfigure the SPIM instance
     MAX30001_reconfig();
 
+    // Perform the SPI transfer
     nrfx_err_t err_code = nrfx_spim_xfer(&max_spim_inst, &xfer, 0);
     if (err_code != NRFX_SUCCESS)
     {
@@ -228,6 +256,7 @@ int MAX30001_normal_write(uint8_t addr, uint8_t *data)
         return -1;
     }
 
+    // Release the SPI semaphore
     k_sem_give(&spi_sem);
 
     return 0;
@@ -238,13 +267,16 @@ int MAX30001_normal_write(uint8_t addr, uint8_t *data)
 
 int MAX30001_burst_read(uint8_t addr, uint8_t *data, uint8_t len)
 {
+    // Take the SPI semaphore
     k_sem_take(&spi_sem, K_FOREVER);
     max_tx_buf[0] = addr<<1 | 0x01;
 
     nrfx_spim_xfer_desc_t xfer = NRFX_SPIM_XFER_TRX(max_tx_buf, 1, data, 1+len*3);
 
+    // Reconfigure the SPIM instance
     MAX30001_reconfig();
 
+    // Perform the SPI transfer
     nrfx_err_t err_code = nrfx_spim_xfer(&max_spim_inst, &xfer, 0);
     if (err_code != NRFX_SUCCESS)
     {
@@ -252,6 +284,7 @@ int MAX30001_burst_read(uint8_t addr, uint8_t *data, uint8_t len)
         return -1;
     }
 
+    // Release the SPI semaphore
     k_sem_give(&spi_sem);
 
     return 0;
@@ -262,15 +295,18 @@ int MAX30001_burst_read(uint8_t addr, uint8_t *data, uint8_t len)
 
 void MAX30001_start_thread(void)
 {
+    // Reset the FIFO of the MAX30001
     uint8_t conf[3];
     conf[0] = 0x00;
     conf[1] = 0x00;
     conf[2] = 0x00;
     MAX30001_normal_write(REG_FIFO_RST_Addr, conf);
 
+    // Start the MAX30001 thread
     MAX30001_stop_thread_flag = false;
     k_thread_create(&MAX30001_thread, MAX30001_thread_stack, K_THREAD_STACK_SIZEOF(MAX30001_thread_stack),
                     MAX30001_thread_func, NULL, NULL, NULL, MAX30001_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&MAX30001_thread, "MAX30001_thread");
 }
 
 /****************************************************************************/
@@ -432,18 +468,21 @@ void MAX30001_thread_func(void *arg1, void *arg2, void *arg3)
         uint32_t rawtime_bin = current_time.rawtime_s_bin;
         uint16_t time_ms_bin = current_time.time_ms_bin;
 
+        // Read the ECG FIFO register
         MAX30001_normal_read(REG_ECG_FIFO_Addr, data_read);
 
+        // Check if the FIFO is not empty
         if(data_read[3] != 0x37)
         {
-            format_datas[count].header = 0xEEEE;
+            format_datas[count].header = MAX30001_STORAGE_HEADER;
             format_datas[count].rawtime_bin = rawtime_bin;
             format_datas[count].time_ms_bin = time_ms_bin;
-            format_datas[count].len = 7;
+            format_datas[count].len = MAX30001_STORAGE_LEN;
             format_datas[count].index = index++;
             memcpy(format_datas[count].measurements, &data_read[1], 3);
             if (VCONF_MAX30001_MODE == VCONF_MAX30001_MODE_ECG_BIOZ)
             {
+                // Read the BIOZ FIFO register
                 MAX30001_burst_read(REG_BIOZ_FIFO_Addr, data_read, 1);
                 memcpy(&format_datas[count].measurements[3], &data_read[1], 3);
             }
@@ -455,10 +494,19 @@ void MAX30001_thread_func(void *arg1, void *arg2, void *arg3)
             count++;
         }
 
+        // Save the measurement after 12 samples
         if (count == CONSEC_SAMPLES)
         {
-            storage_write_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
-            receive_sensor_data((uint8_t *)&format_datas, sizeof(format_datas));
+            storage_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            ble_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            if (VCONF_MAX30001_HEEPO)
+            {
+                SPI_Heep_add_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            }
+            if (VCONF_MAX30001_APPDATA)
+            {
+                app_data_add_to_fifo((uint8_t *)&format_datas, sizeof(format_datas));
+            }
             count = 0;
         }
 

@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
@@ -57,6 +57,9 @@ Description : Original version.
 #include "versa_time.h"
 #include "versa_ble.h"
 #include <nrfx_gpiote.h>
+#include "versa_config.h"
+#include "SPI_Heepocrates.h"
+#include "app_data.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -64,7 +67,12 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-LOG_MODULE_REGISTER(max86178, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(MAX86178, LOG_LEVEL_INF);
+
+// Expected ID register value
+#define MAX86178_ID_REG_VALID 0x43
+
+#define MAX86178_STORAGE_HEADER 0x9999
 
 /****************************************************************************/
 /**                                                                        **/
@@ -134,8 +142,10 @@ uint8_t max86178_rx_buffer[RX_BUF_SIZE];
 K_THREAD_STACK_DEFINE(MAX86178_thread_stack, 1024);
 struct k_thread MAX86178_thread;
 
+// Flag to stop the MAX86178 thread
 volatile bool MAX86178_stop_thread = false;;
 
+// Semaphore for the new data ready
 K_SEM_DEFINE(MAX86_new_data_rdy, 0, 1);
 
 /****************************************************************************/
@@ -167,6 +177,7 @@ int max86178_check_present(void)
 {
     uint8_t data[1];
 
+    // Read the ID register
     int err_code = max86178_read_reg(REG_PART_ID_Addr, data);
     if (err_code != 0)
     {
@@ -174,7 +185,7 @@ int max86178_check_present(void)
         return -1;
     }
 
-    if (data[0] != 0x43)
+    if (data[0] != MAX86178_ID_REG_VALID)
     {
         LOG_ERR("ADS1298 not present\n");
         return -1;
@@ -189,19 +200,26 @@ int max86178_check_present(void)
 
 int max86178_write_reg(uint8_t addr, uint8_t data)
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
+
     int err_code;
+
+    // Perform the I2C transfer
     max86178_tx_buffer[0] = addr;
     max86178_tx_buffer[1] = data;
-
     nrfx_twim_xfer_desc_t xfer = NRFX_TWIM_XFER_DESC_TX(MAX86178_I2C_ADDR, max86178_tx_buffer, 2);
     err_code = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
     if (err_code != NRFX_SUCCESS)
     {
         LOG_ERR("Error writing to MAX86178 register %d\n", addr);
         return -1;
     }
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return 0;
 }
@@ -211,18 +229,24 @@ int max86178_write_reg(uint8_t addr, uint8_t data)
 
 int max86178_read_reg(uint8_t addr, uint8_t *data)
 {
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
     int err_code;
-    max86178_tx_buffer[0] = addr;
 
+    // Perform the I2C transfer
+    max86178_tx_buffer[0] = addr;
     nrfx_twim_xfer_desc_t xfer = NRFX_TWIM_XFER_DESC_TXRX(MAX86178_I2C_ADDR, max86178_tx_buffer, 1, data, 1);
     err_code = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
     if (err_code != NRFX_SUCCESS)
     {
         LOG_ERR("Error reading from MAX86178 register %d\n", addr);
         return -1;
     }
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return 0;
 }
@@ -237,6 +261,7 @@ int max86178_write_seq_reg(uint8_t start_addr, const uint8_t *data, uint8_t num_
         return -1;
     }
 
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
 
     /*! Write the initial address and data in the tx buffer */
@@ -248,7 +273,11 @@ int max86178_write_seq_reg(uint8_t start_addr, const uint8_t *data, uint8_t num_
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -263,6 +292,7 @@ int max86178_read_seq_reg(uint8_t start_addr, uint8_t *data, uint8_t num_bytes)
         return -1;
     }
 
+    // Take the I2C semaphore
     k_sem_take(&I2C_sem, K_FOREVER);
 
     /*! Write the initial address in the tx buffer */
@@ -273,7 +303,11 @@ int max86178_read_seq_reg(uint8_t start_addr, uint8_t *data, uint8_t num_bytes)
 
     /*! Start the transfer */
     nrfx_err_t err = nrfx_twim_xfer(I2cInstancePtr, &xfer, 0);
+
+    // Wait for the transfer to finish
     while(nrfx_twim_is_busy(I2cInstancePtr) == true){k_sleep(K_USEC(10));}
+
+    // Give back the I2C semaphore
     k_sem_give(&I2C_sem);
     return err == NRFX_SUCCESS ? 0 : -1;
 }
@@ -283,6 +317,7 @@ int max86178_read_seq_reg(uint8_t start_addr, uint8_t *data, uint8_t num_bytes)
 
 int max86178_start_thread(void)
 {
+    // Start the PPG measurements
     MAX86178_REG reg;
     reg.REG_PPG_CONFIG_1.b.MEAS1_EN = 0b1;
     reg.REG_PPG_CONFIG_1.b.MEAS2_EN = 0b1;
@@ -291,9 +326,12 @@ int max86178_start_thread(void)
     reg.REG_PPG_CONFIG_1.b.MEAS5_EN = 0b0;
     reg.REG_PPG_CONFIG_1.b.MEAS6_EN = 0b0;
     max86178_write_reg(REG_PPG_CONFIG_1_Addr, reg.REG_PPG_CONFIG_1.w);
+
+    // Start the MAX86178 thread
     MAX86178_stop_thread = false;
     k_thread_create(&MAX86178_thread, MAX86178_thread_stack, K_THREAD_STACK_SIZEOF(MAX86178_thread_stack),
                     max86178_thread_func, NULL, NULL, NULL, MAX86178_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&MAX86178_thread, "MAX86178_thread");
     return 0;
 }
 
@@ -302,6 +340,7 @@ int max86178_start_thread(void)
 
 int max86178_stop_thread(void)
 {
+    // Stop the PPG measurements
     MAX86178_REG reg;
     reg.REG_PPG_CONFIG_1.b.MEAS1_EN = 0b0;
     reg.REG_PPG_CONFIG_1.b.MEAS2_EN = 0b0;
@@ -310,6 +349,8 @@ int max86178_stop_thread(void)
     reg.REG_PPG_CONFIG_1.b.MEAS5_EN = 0b0;
     reg.REG_PPG_CONFIG_1.b.MEAS6_EN = 0b0;
     max86178_write_reg(REG_PPG_CONFIG_1_Addr, reg.REG_PPG_CONFIG_1.w);
+
+    // Stop the MAX86178 thread
     MAX86178_stop_thread = true;
     return 0;
 }
@@ -494,7 +535,7 @@ int max86178_config(void)
     reg.REG_MEAS1_CONFIG_4.b.MEAS1_PD_SETLNG = 0b01;
     max86178_write_reg(REG_MEAS1_CONFIG_4_Addr, reg.REG_MEAS1_CONFIG_4.w);
 
-    reg.REG_MEAS1_LEDA_CURRENT.b.MEAS1_DRVA_PA = 0x08;
+    reg.REG_MEAS1_LEDA_CURRENT.b.MEAS1_DRVA_PA = 0x18;
     max86178_write_reg(REG_MEAS1_LEDA_CURRENT_Addr, reg.REG_MEAS1_LEDA_CURRENT.w);
 
     reg.REG_MEAS1_LEDB_CURRENT.b.MEAS1_DRVB_PA = 0x00;
@@ -534,7 +575,7 @@ int max86178_config(void)
     reg.REG_MEAS2_LEDA_CURRENT.b.MEAS2_DRVA_PA = 0x00;
     max86178_write_reg(REG_MEAS2_LEDA_CURRENT_Addr, reg.REG_MEAS2_LEDA_CURRENT.w);
 
-    reg.REG_MEAS2_LEDB_CURRENT.b.MEAS2_DRVB_PA = 0x08;
+    reg.REG_MEAS2_LEDB_CURRENT.b.MEAS2_DRVB_PA = 0x18;
     max86178_write_reg(REG_MEAS2_LEDB_CURRENT_Addr, reg.REG_MEAS2_LEDB_CURRENT.w);
 
     reg.REG_MEAS2_CONFIG_5.b.MEAS2_PD1_SEL = 0b10;
@@ -564,7 +605,7 @@ int max86178_config(void)
     reg.REG_MEAS3_CONFIG_4.b.MEAS3_PD_SETLNG = 0b01;
     max86178_write_reg(REG_MEAS3_CONFIG_4_Addr, reg.REG_MEAS3_CONFIG_4.w);
 
-    reg.REG_MEAS3_LEDA_CURRENT.b.MEAS3_DRVA_PA = 0x08;//0x3C;
+    reg.REG_MEAS3_LEDA_CURRENT.b.MEAS3_DRVA_PA = 0x18;//0x3C;
     max86178_write_reg(REG_MEAS3_LEDA_CURRENT_Addr, reg.REG_MEAS3_LEDA_CURRENT.w);
 
     reg.REG_MEAS3_LEDB_CURRENT.b.MEAS3_DRVB_PA = 0x00;
@@ -637,8 +678,9 @@ int max86178_config(void)
 
 void max86178_thread_func(void *arg1, void *arg2, void *arg3)
 {
+    // Initialize the MAX86178 storage format
     MAX86178_StorageFormat MAX86178_Storage;
-    MAX86178_Storage.header = 0x9999;
+    MAX86178_Storage.header = MAX86178_STORAGE_HEADER;
     uint8_t index = 0;
     uint8_t data_read[MAX86178_FIFO_READ_SIZE];
     uint8_t status;
@@ -647,20 +689,32 @@ void max86178_thread_func(void *arg1, void *arg2, void *arg3)
     {
         // k_sem_take(&MAX86_new_data_rdy, K_FOREVER);
 
+        // Read the FIFO data
         max86178_read_seq_reg(REG_FIFO_DATA_REGISTER_Addr, data_read, MAX86178_FIFO_READ_SIZE);
 
+        // Get the current time
         struct time_values current_time = get_time_values();
         uint32_t time_s_bin = current_time.rawtime_s_bin;
         uint16_t time_ms_bin = current_time.time_ms_bin;
 
+        // Put the measurements in the storage format
         MAX86178_Storage.time_s_bin = time_s_bin;
         MAX86178_Storage.time_ms_bin = time_ms_bin;
         MAX86178_Storage.len = MAX86178_FIFO_READ_SIZE+1;
         MAX86178_Storage.index = index++;
         memcpy(MAX86178_Storage.data, data_read, MAX86178_FIFO_READ_SIZE);
 
-        storage_write_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
-        receive_sensor_data((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        // Save the measurements
+        storage_add_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        ble_add_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        if(VCONF_MAX86178_HEEPO)
+        {
+            SPI_Heep_add_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        }
+        if(VCONF_MAX86178_APPDATA)
+        {
+            app_data_add_to_fifo((uint8_t *)&MAX86178_Storage, sizeof(MAX86178_Storage));
+        }
 
         k_sleep(K_MSEC(25));
 

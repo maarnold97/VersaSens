@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
@@ -55,14 +55,35 @@ Description : Original version.
 #include "storage.h"
 #include "versa_time.h"
 #include "versa_ble.h"
-
-LOG_MODULE_REGISTER(bno086, LOG_LEVEL_INF);
+#include "SPI_Heepocrates.h"
+#include "versa_config.h"
+#include "app_data.h"
 
 /****************************************************************************/
 /**                                                                        **/
 /*                        DEFINITIONS AND MACROS                            */
 /**                                                                        **/
 /****************************************************************************/
+
+LOG_MODULE_REGISTER(bno086, LOG_LEVEL_INF);
+
+// BNO086 storage format header
+#define BNO_STORAGE_HEADER 0xCCCC
+
+// BNO086 RVC message length
+#define BNO_RAW_MEAS_LEN 19
+
+// BNO086 final measurement length
+#define BNO_MEAS_LEN 13
+
+// Number of consecutive measurements to save
+#define BNO_CONSEC_MEAS 10
+
+// BNO086 storage format length (130)
+#define BNO_STORAGE_LEN (BNO_MEAS_LEN*BNO_CONSEC_MEAS)
+
+// Size of the BNO086 RVC header
+#define BNO_RVC_HEADER_SIZE 2
 
 /****************************************************************************/
 /**                                                                        **/
@@ -102,11 +123,11 @@ void work_handler_bno086_delayed_start(struct k_work *work);
 static void uarte_handler(nrfx_uarte_event_t const * p_event, void * p_context);
 
 /**
- * @brief Saves the BNO086 sensor frame to flash.
+ * @brief Saves the BNO086 sensor frame.
  * 
- * @details This function is a thread function that saves the BNO086 sensor frame
- * to flash. It's called when the BNO086 sensor frame is received and ready to be saved.
- * The function writes the frame to flash and then starts a new reception.
+ * @details This function is a thread function that saves the BNO086 sensor frame.
+ * It's called when the BNO086 sensor frame is received and ready to be saved.
+ * The function writes the frame and then starts a new reception.
  * 
  * @param arg1 A pointer to the first argument passed to the thread.
  * @param arg2 A pointer to the second argument passed to the thread.
@@ -176,6 +197,7 @@ int bno086_start_stream(void)
     /*! Start the BNO086 save thread */
     k_thread_create(&BNO086_save_thread, BNO086_save_thread_stack, K_THREAD_STACK_SIZEOF(BNO086_save_thread_stack),
                     bno086_save_thread_func, NULL, NULL, NULL, BNO086_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&BNO086_save_thread, "BNO086_save_thread");
 
     /*! Start a UART reception */
     status = nrfx_uarte_rx(&uarte_inst, bno_frame, BNO086_RVC_MSG_LENGTH);
@@ -202,9 +224,8 @@ int bno086_stop_stream(void)
     /*! Cancel the delayed work item */
     k_work_cancel_delayable(&start_delayed);
 
-    /*! Stop any ongoing reception */
+    /*! Stop any ongoing reception (twice due to double buffering)*/
     status = nrfx_uarte_rx_abort(&uarte_inst, 0, 0);
-
     status = nrfx_uarte_rx_abort(&uarte_inst, 0, 0);
 
 
@@ -354,10 +375,10 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
     nrfx_err_t status;
     nrfx_uarte_t * p_inst = &uarte_inst;
 
-    bno_storage.header = 0xCCCC;
-    bno_storage.len = 130;
+    bno_storage.header = BNO_STORAGE_HEADER;
+    bno_storage.len = BNO_STORAGE_LEN;
 
-    uint8_t write_packet[13*10];
+    uint8_t write_packet[BNO_STORAGE_LEN];
 
     while(!bno086_stop_save)
     {
@@ -382,20 +403,28 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
         bno_storage.rawtime_bin = rawtime_bin;
         bno_storage.time_ms_bin = time_ms_bin;
 
-        for (size_t i = 0; i < 10; i++)
+        for (size_t i = 0; i < BNO_CONSEC_MEAS; i++)
         {
-            memcpy(write_packet + i*13, frame_write + 2 + i*19, 13);
+            memcpy(write_packet + i*BNO_MEAS_LEN, frame_write + BNO_RVC_HEADER_SIZE + i*BNO_RAW_MEAS_LEN, BNO_MEAS_LEN);
         }
 
-        memcpy(bno_storage.data, write_packet, 13*10);
+        memcpy(bno_storage.data, write_packet, BNO_STORAGE_LEN);
 
-        int ret = storage_write_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        int ret = storage_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
         if(ret != 0)
         {
             LOG_INF("Flash write failed");
         }
-
-        receive_sensor_data((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        if (VCONF_BNO086_HEEPO)
+        {
+            SPI_Heep_add_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        }
+        if (VCONF_BNO086_APPDATA)
+        {
+            app_data_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
+        }
+        
+        ble_add_to_fifo((uint8_t *)&bno_storage, sizeof(BNO086_StorageFormat));
 
         bno086_frame_t *frame = (bno086_frame_t *)frame_write;
         LOG_INF("Index: %02x", frame->B.index);

@@ -36,7 +36,7 @@ file(GLOB API
 )
 
 target_sources(app PRIVATE 
-    src/testbench/test_led.c 
+    src/main.c 
     ${DRIVERS}
     ${API}
     ${OPUS_SOURCES}

@@ -1,39 +1,63 @@
-#include <zephyr/sys/printk.h>
 #include <zephyr/kernel.h>
+#include <zephyr/types.h>
+#include <zephyr/usb/usb_device.h>
+#include <time.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/bluetooth/gatt.h>
+#include <zephyr/bluetooth/hci.h>
+#include <nrfx_gpiote.h>
+#include "MAX77658.h"
+#include "versa_ble.h"
+#include "twim_inst.h"
+#include "storage.h"
+#include "ADS1298.h"
+#include "MAX30001.h"
+#include "versa_api.h"
+#include <zephyr/devicetree.h>
+#include <zephyr/storage/disk_access.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/fs/fs.h>
+#include <ff.h>
+#include <SPI_Heepocrates.h>
+#include "app_data.h"
 
-K_THREAD_STACK_DEFINE(my_thread_stack, 1024);
-struct k_thread my_thread;
-volatile bool stop_thread = false;
+LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
-void my_thread_func(void *arg1, void *arg2, void *arg3)
-{
-    while (!stop_thread)
-    {
-        printk("Thread is running...\n");
-        k_sleep(K_MSEC(1000));
-    }
-}
-
-void start_thread()
-{
-    printk("Starting thread...\n");
-    stop_thread = false;
-    k_thread_create(&my_thread, my_thread_stack, K_THREAD_STACK_SIZEOF(my_thread_stack),
-                    my_thread_func, NULL, NULL, NULL, K_PRIO_PREEMPT(0), 0, K_NO_WAIT);
-}
-
-void stop_thread_func()
-{
-    printk("Stopping thread...\n");
-    stop_thread = true;
-    k_thread_abort(&my_thread);
-}
 
 int main(void)
 {
-    start_thread();
-    k_sleep(K_SECONDS(5)); // Let the thread run for 5 seconds
-    stop_thread_func();
-    return 0;
+    nrf_gpio_cfg_output(START_PIN);
+    nrf_gpio_pin_set(START_PIN);
+    
+    versa_init();
+    // enable_auto_connect();
+    versa_config();
+
+    versa_start_led_thread();
+    versa_start_mode_thread();
+
+    SPI_Heepocrates_init();
+
+    while (1)
+    {
+        // data aquisition example
+        k_sleep(K_MSEC(10));
+        struct app_data_struct *data = k_malloc(sizeof(*data));
+        if (data == NULL)
+        {
+            LOG_ERR("Failed to allocate memory for new_data\n");
+        }
+        else
+        {
+            app_data_get_from_fifo(data);
+        }
+        
+        if (data != NULL)
+        {
+            LOG_INF("Data received from FIFO: %02hx", data->data[0]);
+            k_free(data);
+        }
+    }
 }

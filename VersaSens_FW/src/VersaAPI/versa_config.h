@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
@@ -86,15 +86,34 @@ Description : Original version.
 
 /* Enable/Disable sensors */
 #define VCONF_ADS1298_EN        1
-#define VCONF_BNO086_EN         1
-#define VCONF_MAX30001_EN       1
+#define VCONF_BNO086_EN         0
+#define VCONF_MAX30001_EN       0
 #define VCONF_MAX86178_EN       1
-#define VCONF_MLX90632_EN       1
-#define VCONF_T5838_EN          1
-#define VCONF_MAX77658_EN       1
+#define VCONF_MLX90632_EN       0
+#define VCONF_T5838_EN          0
+#define VCONF_MAX77658_EN       0
+
+/* Heepo module configuration */
+#define VCONF_ADS1298_HEEPO     1
+#define VCONF_MAX30001_HEEPO    0
+#define VCONF_MAX86178_HEEPO    0
+#define VCONF_MLX90632_HEEPO    0
+#define VCONF_T5838_HEEPO       0
+#define VCONF_MAX77658_HEEPO    0
+#define VCONF_BNO086_HEEPO      0
+
+/* App Data configuration */
+#define VCONF_ADS1298_APPDATA   1
+#define VCONF_MAX30001_APPDATA  0
+#define VCONF_MAX86178_APPDATA  0
+#define VCONF_MLX90632_APPDATA  0
+#define VCONF_T5838_APPDATA     0
+#define VCONF_MAX77658_APPDATA  0
+#define VCONF_BNO086_APPDATA    0
+
 
 /* ADS1298 configuration */
-#define VCONF_ADS1298_FS        VCONF_ADS1298_FS_1000
+#define VCONF_ADS1298_FS        VCONF_ADS1298_FS_500
 #define VCONF_ADS1298_GAIN      VCONF_ADS1298_GAIN_12
 #define VCONF_ADS1298_SUBSAMPLING_FACTOR    4
 

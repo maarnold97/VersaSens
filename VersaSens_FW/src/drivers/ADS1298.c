@@ -18,7 +18,7 @@
 VERSION HISTORY:
 ----------------
 Version     : 1
-Date        : 10/02/2021
+Date        : DD/MM/YY
 Revised by  : Benjamin Duc
 Description : Original version.
 
@@ -58,6 +58,8 @@ Description : Original version.
 #include "storage.h"
 #include "versa_config.h"
 #include "spim_inst.h"
+#include "SPI_Heepocrates.h"
+#include "app_data.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -66,6 +68,19 @@ Description : Original version.
 /****************************************************************************/
 
 LOG_MODULE_REGISTER(ADS1298, LOG_LEVEL_INF);
+
+// First byte of the ID register
+#define ADS_ID_BYTE1 0x92
+
+// ADS1298 WRITE FLAG BIT
+#define ADS_WRITE_FLAG 0x40
+// ADS1298 READ FLAG BIT
+#define ADS_READ_FLAG 0x20
+
+// ADS storage format header
+#define ADS_STORAGE_HEADER 0xDDDD
+// ADS storage format length
+#define ADS_STORAGE_LEN 25
 
 /****************************************************************************/
 /**                                                                        **/
@@ -199,7 +214,7 @@ int ADS1298_check_present(void)
         return -1;
     }
 
-    if (data[2] != 0x92)
+    if (data[2] != ADS_ID_BYTE1)
     {
         LOG_ERR("ADS1298 not present\n");
         return -1;
@@ -245,7 +260,7 @@ int ADS1298_read_reg(uint8_t addr, uint8_t *data)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x20;
+    ads_tx_buf[0] = addr | ADS_READ_FLAG;
     ads_tx_buf[1] = 0x00;
     ads_tx_buf[2] = 0x00;
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TRX(ads_tx_buf, 3, data, 3);
@@ -274,7 +289,7 @@ int ADS1298_write_reg(uint8_t addr, uint8_t data)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x40;
+    ads_tx_buf[0] = addr | ADS_WRITE_FLAG;
     ads_tx_buf[1] = 0x00;
     ads_tx_buf[2] = data;
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TX(ads_tx_buf, 3);
@@ -303,7 +318,7 @@ int ADS1298_read_Nreg(uint8_t addr, uint8_t *data, uint8_t num_reg)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x20;
+    ads_tx_buf[0] = addr | ADS_READ_FLAG;
     ads_tx_buf[1] = num_reg;
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TRX(ads_tx_buf, 2, data, 2+num_reg);
 
@@ -331,7 +346,7 @@ int ADS1298_write_Nreg(uint8_t addr, uint8_t *data, uint8_t num_reg)
     int err_code;
 
     // set the transfer descriptor
-    ads_tx_buf[0] = addr | 0x40;
+    ads_tx_buf[0] = addr | ADS_WRITE_FLAG;
     ads_tx_buf[1] = num_reg;
     memcpy(&ads_tx_buf[2], data, num_reg);
     nrfx_spim_xfer_desc_t spi_config = NRFX_SPIM_XFER_TX(ads_tx_buf, num_reg + 2);
@@ -444,6 +459,7 @@ int ADS1298_start_thread(void)
     // Start the thread
     k_thread_create(&ADS1298_thread, ADS1298_thread_stack, K_THREAD_STACK_SIZEOF(ADS1298_thread_stack),
                     ADS1298_thread_func, NULL, NULL, NULL, ADS1298_PRIO, 0, K_NO_WAIT);
+    k_thread_name_set(&ADS1298_thread, "ADS1298_thread");
     return 0;
 }
 
@@ -569,12 +585,12 @@ void ADS1298_thread_func(void *arg1, void *arg2, void *arg3)
             nrf_gpio_pin_clear(27);
         }
 
-        storage_datas[storage_count].header = 0xDDDD;
+        storage_datas[storage_count].header = ADS_STORAGE_HEADER;
         storage_datas[storage_count].rawtime_bin = rawtime_bin;
         storage_datas[storage_count].time_ms_bin = time_ms_bin;
-        storage_datas[storage_count].len = 25;
+        storage_datas[storage_count].len = ADS_STORAGE_LEN;
         storage_datas[storage_count].index = index++;
-        memcpy(storage_datas[storage_count].measurements, &data[4], 24);
+        memcpy(storage_datas[storage_count].measurements, &data[4], ADS_STORAGE_LEN-1);
 
         // Subsampling logic for BLE
         if (index % VCONF_ADS1298_SUBSAMPLING_FACTOR == 0)
@@ -585,7 +601,7 @@ void ADS1298_thread_func(void *arg1, void *arg2, void *arg3)
             // Send data to BLE if we have collected enough measurements
             if (ble_count == ADS1298_CONSEC_MEAS)
             {
-                receive_sensor_data((uint8_t *)&ble_datas, sizeof(ble_datas));
+                ble_add_to_fifo((uint8_t *)&ble_datas, sizeof(ble_datas));
                 ble_count = 0; // Reset the BLE counter
             }
         }
@@ -595,7 +611,15 @@ void ADS1298_thread_func(void *arg1, void *arg2, void *arg3)
         // If we have ADS1298_CONSEC_MEAS measurements, write them to storage
         if (storage_count == ADS1298_CONSEC_MEAS)
         {
-            int ret = storage_write_to_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
+            int ret = storage_add_to_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
+            if(VCONF_ADS1298_HEEPO)
+            {
+                SPI_Heep_add_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));            
+            }
+            if (VCONF_ADS1298_APPDATA)
+            {
+                app_data_add_to_fifo((uint8_t *)&storage_datas, sizeof(storage_datas));
+            }
             storage_count = 0; // Reset the storage counter
         }
     }
@@ -620,8 +644,7 @@ int ADS1298_reconfig(void)
         LOG_ERR("twim_reconfigure failed with error code: %d\n", err_code);
         return -1;
     }
-
-    LOG_INF("ADS1298_reconfig");
+    
     return 0;
 }
 
