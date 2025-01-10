@@ -266,5 +266,9 @@ In this section, you can find the details of the data format used for saving sen
 
 </details>
 
+## 🧩 HEEPpocrates Example
+
+A demo application for the HEEPpocrates module, implementing SPI communication with the main module, is available in the following repository: [HEEPpocrates Repository](https://eslgit.epfl.ch/bduc/HEEPpocrates). The application can be found in the folder: `HEEPpocrates/hw/vendor/esl_epfl_x_heep/sw/applications/test_spi_versasens`.
+
 ## ⚠️ Known Issues
 - The initialization of a storage file on the SD card can take a variable amount of time, which increases with the number of files already present. This can result in delays when switching modes.
