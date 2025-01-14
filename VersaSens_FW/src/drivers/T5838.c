@@ -225,7 +225,11 @@ int t5838_init(void)
 
     /*! Set the PDM configuration */
     nrfx_pdm_config_t pdm_config = NRFX_PDM_DEFAULT_CONFIG(PDM_CLK_PIN, PDM_DATA_PIN);
+    #ifndef VCONF_T5838_STEREO_EN
     pdm_config.mode = NRF_PDM_MODE_MONO;
+    #else
+    pdm_config.mode = NRF_PDM_MODE_STEREO;
+    #endif
     pdm_config.edge = NRF_PDM_EDGE_LEFTFALLING;
 
     // f_pdm = 768000
