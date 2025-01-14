@@ -120,6 +120,9 @@ Description : Original version.
 /* MAX30001 configuration */
 #define VCONF_MAX30001_MODE     VCONF_MAX30001_MODE_ECG_BIOZ
 
+/* T5838 configuration */
+// #define VCONF_T5838_STEREO_EN   // uncomment to enable stereo mode
+
 
 /****************************************************************************/
 /**                                                                        **/
