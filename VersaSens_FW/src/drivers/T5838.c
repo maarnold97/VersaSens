@@ -74,7 +74,11 @@ Description : Original version.
 LOG_MODULE_REGISTER(t5838, LOG_LEVEL_INF);
 
 /*!< Size of the buffer for PDM frames */
+#ifndef VCONF_T5838_STEREO_EN
 #define PDM_BUFFER_SIZE        480    
+#else
+#define PDM_BUFFER_SIZE        240
+#endif
 
 // T5838 storage format header
 #define T5838_STORAGE_HEADER 0xAAAA
@@ -266,6 +270,7 @@ void t5838_stop_saving(void)
 /**                                                                        **/
 /****************************************************************************/
 
+#ifndef VCONF_T5838_STEREO_EN
 void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
 {
     /* Initialize Opus Encoder */
@@ -338,6 +343,69 @@ void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
     opus_encoder_destroy(encoder);
     k_thread_abort(k_current_get());
 }
+#else
+void t5838_save_thread_func(void *arg1, void *arg2, void *arg3)
+{
+    int error;
+
+    uint8_t frame_index = 0;                           /*!< Frame sequence index */
+    storage_format.header = 0xAAAA;                    /*!< Storage header marker */
+
+
+    bool *frame_flags[] = {&frame1_new, &frame2_new, &frame3_new};  /*!< Pointers to frame flags */
+    int16_t *frames[] = {t5838_frames.frame1, t5838_frames.frame2, t5838_frames.frame3};  /*!< Frame pointers */
+
+
+    uint16_t len = PDM_BUFFER_SIZE;
+
+
+    /* Main loop to handle new frames */
+    while (!save_thread_stop) {
+        struct time_values current_time = get_time_values();
+        storage_format.rawtime_bin = current_time.rawtime_s_bin;
+        storage_format.time_ms_bin = current_time.time_ms_bin;
+
+
+        for (int i = 0; i < 3; i++) {
+            if (*frame_flags[i]) {
+                *frame_flags[i] = false;
+
+
+                /* Store encoded data in storage format structure */
+                storage_format.len = len + 1;
+                storage_format.index = frame_index++;
+                memcpy(storage_format.data, frames[i], len);
+
+
+                /* Store and add data to buffers */
+                int ret = storage_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
+                if (ret != 0) {
+                    LOG_ERR("Error writing to flash\n");
+                }
+
+
+                /* Add to BLE and optional SPI Heep if configured */
+                ble_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
+                if (VCONF_T5838_HEEPO) {
+                    SPI_Heep_add_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
+                }
+                if(VCONF_T5838_APPDATA) {
+                    app_data_add_to_fifo((uint8_t *)&storage_format, len + STORAGE_SIZE_HEADER);
+                }
+
+
+                printk("Processed Frame %d, Length: %d bytes\n", i + 1, len);
+            }
+        }
+
+
+        k_sleep(K_MSEC(10));  /*!< Sleep briefly before checking for new frames */
+    }
+
+
+    k_thread_abort(k_current_get());
+}
+#endif
 
 /****************************************************************************/
 /**                                                                        **/
