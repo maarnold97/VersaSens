@@ -86,12 +86,12 @@ Description : Original version.
 
 /* Enable/Disable sensors */
 #define VCONF_ADS1298_EN        1
-#define VCONF_BNO086_EN         0
-#define VCONF_MAX30001_EN       0
+#define VCONF_BNO086_EN         1
+#define VCONF_MAX30001_EN       1
 #define VCONF_MAX86178_EN       1
-#define VCONF_MLX90632_EN       0
-#define VCONF_T5838_EN          0
-#define VCONF_MAX77658_EN       0
+#define VCONF_MLX90632_EN       1
+#define VCONF_T5838_EN          1
+#define VCONF_MAX77658_EN       1
 
 /* Heepo module configuration */
 #define VCONF_ADS1298_HEEPO     1
