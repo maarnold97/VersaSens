@@ -1062,6 +1062,48 @@ bool get_temperature_high(void);
  */
 bool get_battery_low(void);
 
+/**
+ * @brief This function disables +3V3_Peripherals and enables the active discharge resistor.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int disable_3v3_peripherals(void);
+
+/**
+ * @brief This function enables +3V3_Peripherals.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int enable_3v3_peripherals(void);
+
+/**
+ * @brief This function enables +5V.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int enable_5v(void);
+
+/**
+ * @brief This function disables +5V and enables the active discharge resistor.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int disable_5v(void);
+
+/**
+ * @brief This function enables +1V8.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int enable_1v8(void);
+
+/**
+ * @brief This function disables +1V8 and enables the active discharge resistor.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int disable_1v8(void);
+
 /****************************************************************************/
 /**                                                                        **/
 /**                          INLINE FUNCTIONS                              **/

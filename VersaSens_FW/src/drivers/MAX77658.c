@@ -311,11 +311,27 @@ int MAX77658_init(void){
     MAX77658_REG reg;
     MAX77658_FG_REG fg_reg;
 
-    reg.REG_CNFG_SBB2_B.b.OP_MODE = 0b00;
-    reg.REG_CNFG_SBB2_B.b.IP_SBB2 = 0b00;
-    reg.REG_CNFG_SBB2_B.b.ADE_SBB2 = 0b0;
-    reg.REG_CNFG_SBB2_B.b.EN_SBB2 = 0b100;
-    MAX77658_write_8bit(REG_CNFG_SBB2_B_ADDR, reg.REG_CNFG_SBB2_B.w);
+    // SBB1, 2V output for the 1.8V LDO (LDO1)
+    // first disable sbb1, then change output to 2V. It is then enabled in a separate function
+    reg.REG_CNFG_SBB1_B.b.OP_MODE = 0b01; //buck
+    reg.REG_CNFG_SBB1_B.b.IP_SBB1 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB1_B.b.ADE_SBB1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB1_B.b.EN_SBB1 = 0b100; //disable
+    MAX77658_write_8bit(REG_CNFG_SBB1_B_ADDR, reg.REG_CNFG_SBB1_B.w);
+    reg.REG_CNFG_SBB1_A.b.TV_SBB1 = 0x3c; // 2V output
+    MAX77658_write_8bit(REG_CNFG_SBB1_A_ADDR, reg.REG_CNFG_SBB1_A.w);
+
+    // SBB0, 3.5V output for the 3.3V_Peripherals LDO (LDO0)
+    reg.REG_CNFG_SBB0_A.b.TV_SBB0 = 0x78; // 3.5V output
+    MAX77658_write_8bit(REG_CNFG_SBB0_A_ADDR, reg.REG_CNFG_SBB0_A.w);
+
+    // LDO0, 3.3 output for 3.3V_Peripherals
+    reg.REG_CNFG_LDO0_A.b.TV_OFS_LDO0 = 0b0; // no offset
+    reg.REG_CNFG_LDO0_A.b.TV_LDO0 = 0x70; // 3.3V output
+    MAX77658_write_8bit(REG_CNFG_LDO0_A_ADDR, reg.REG_CNFG_LDO0_A.w);
+
+
+
     reg.REG_CNFG_CHG_E.b.CHG_CC = 0x3F;             //300mA
     reg.REG_CNFG_CHG_E.b.T_FAST_CHG = 0b01;         //3h
     MAX77658_write_8bit(REG_CNFG_CHG_E_ADDR, reg.REG_CNFG_CHG_E.w);
@@ -357,6 +373,115 @@ int MAX77658_init(void){
 int MAX77658_config(void){
     printk("MAX77658_configure\n");
     return 0;
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+int enable_5v(void)
+{
+    MAX77658_REG reg;
+    reg.REG_CNFG_SBB2_B.b.OP_MODE = 0b00; //automatic
+    reg.REG_CNFG_SBB2_B.b.IP_SBB2 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB2_B.b.ADE_SBB2 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB2_B.b.EN_SBB2 = 0b110; //enable
+    return MAX77658_write_8bit(REG_CNFG_SBB2_B_ADDR, reg.REG_CNFG_SBB2_B.w);
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+int disable_5v(void)
+{
+    MAX77658_REG reg;
+    reg.REG_CNFG_SBB2_B.b.OP_MODE = 0b00; //automatic
+    reg.REG_CNFG_SBB2_B.b.IP_SBB2 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB2_B.b.ADE_SBB2 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB2_B.b.EN_SBB2 = 0b100; //disable
+    return MAX77658_write_8bit(REG_CNFG_SBB2_B_ADDR, reg.REG_CNFG_SBB2_B.w);
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+int enable_1v8(void)
+{
+    MAX77658_REG reg;
+    reg.REG_CNFG_SBB1_B.b.OP_MODE = 0b01; //buck
+    reg.REG_CNFG_SBB1_B.b.IP_SBB1 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB1_B.b.ADE_SBB1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB1_B.b.EN_SBB1 = 0b110; //enabled
+    if(MAX77658_write_8bit(REG_CNFG_SBB1_B_ADDR, reg.REG_CNFG_SBB1_B.w) != 0) {
+        return -1;
+    }
+
+    reg.REG_CNFG_LDO1_B.b.LDO1_MD = 0b0;  //ldo mode
+    reg.REG_CNFG_LDO1_B.b.ADE_LDO1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_LDO1_B.b.EN_LDO1 = 0b110; //enabled
+    return MAX77658_write_8bit(REG_CNFG_LDO1_B_ADDR, reg.REG_CNFG_LDO1_B.w);
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+int disable_1v8(void) 
+{
+    MAX77658_REG reg;
+    // no need to change output voltage of ldo1 as it is at 1.8V
+    reg.REG_CNFG_LDO1_B.b.LDO1_MD = 0b0;  //ldo mode
+    reg.REG_CNFG_LDO1_B.b.ADE_LDO1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_LDO1_B.b.EN_LDO1 = 0b100; //disabled
+    if(MAX77658_write_8bit(REG_CNFG_LDO1_B_ADDR, reg.REG_CNFG_LDO1_B.w) != 0) {
+        return -1;
+    }
+
+    reg.REG_CNFG_SBB1_B.b.OP_MODE = 0b01; //buck
+    reg.REG_CNFG_SBB1_B.b.IP_SBB1 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB1_B.b.ADE_SBB1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB1_B.b.EN_SBB1 = 0b100; //disabled
+    return MAX77658_write_8bit(REG_CNFG_SBB1_B_ADDR, reg.REG_CNFG_SBB1_B.w);
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+int enable_3v3_peripherals(void)
+{
+    MAX77658_REG reg;
+    reg.REG_CNFG_SBB0_B.b.OP_MODE = 0b00; //automatic
+    reg.REG_CNFG_SBB0_B.b.IP_SBB0 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB0_B.b.ADE_SBB0 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB0_B.b.EN_SBB0 = 0b110; //enabled
+    if(MAX77658_write_8bit(REG_CNFG_SBB0_B_ADDR, reg.REG_CNFG_SBB0_B.w) != 0) {
+        return -1;
+    }
+
+    // no need to change output voltage of ldo1 as it is at 1.8V
+    reg.REG_CNFG_LDO0_B.b.LDO0_MD = 0b0;  //ldo mode
+    reg.REG_CNFG_LDO0_B.b.ADE_LDO0 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_LDO0_B.b.EN_LDO0 = 0b110; //enabled
+    return MAX77658_write_8bit(REG_CNFG_LDO0_B_ADDR, reg.REG_CNFG_LDO0_B.w);
+}
+
+/*****************************************************************************
+*****************************************************************************/
+
+int disable_3v3_peripherals(void) 
+{
+    MAX77658_REG reg;
+    // no need to change output voltage of ldo1 as it is at 1.8V
+    reg.REG_CNFG_LDO1_B.b.LDO1_MD = 0b0;  //ldo mode
+    reg.REG_CNFG_LDO1_B.b.ADE_LDO1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_LDO1_B.b.EN_LDO1 = 0b100; //disabled
+    if(MAX77658_write_8bit(REG_CNFG_LDO1_B_ADDR, reg.REG_CNFG_LDO1_B.w) != 0) {
+        return -1;
+    }
+
+    reg.REG_CNFG_SBB1_B.b.OP_MODE = 0b00; //automtic
+    reg.REG_CNFG_SBB1_B.b.IP_SBB1 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB1_B.b.ADE_SBB1 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB1_B.b.EN_SBB1 = 0b100; //disabled
+    return MAX77658_write_8bit(REG_CNFG_SBB1_B_ADDR, reg.REG_CNFG_SBB1_B.w);
 }
 
 /*****************************************************************************
