@@ -308,8 +308,17 @@ int MAX77658_init(void){
     I2cInstancePtr=I2cInstPtr;
 
     // Initialize the MAX77658 registers
-    MAX77658_REG reg;
+    MAX77658_REG reg = {0};
     MAX77658_FG_REG fg_reg;
+
+    reg.REG_CNFG_GPIO1.b.ALT_GPIO1 = 0b0; // disable alternative mode for gpio1
+    MAX77658_write_8bit(REG_CNFG_GPIO1_ADDR, reg.REG_CNFG_GPIO1.w);
+
+    reg.REG_CNFG_GLBL.b.PU_DIS = 0b1; // 10Mohm pullup
+    reg.REG_CNFG_GLBL.b.nEN_MODE = 0b01; // slide switch mode
+    reg.REG_CNFG_GLBL.b.DBEN_nEN = 0b1; //30ms debounce
+    MAX77658_write_8bit(REG_CNFG_GLBL_ADDR, reg.REG_CNFG_GLBL.w);
+
 
     // SBB1, 2V output for the 1.8V LDO (LDO1)
     // first disable sbb1, then change output to 2V. It is then enabled in a separate function
