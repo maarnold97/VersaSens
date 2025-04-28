@@ -127,8 +127,8 @@ float ObjectTemperature;
 static nrfx_twim_t *I2cInstancePtr;
 
 /*! I2C tx and rx buffers */
-uint8_t tx_buffer[MAX_SIZE_TRANSFER + 2];
-uint8_t rx_buffer[RX_BUF_SIZE];
+static uint8_t tx_buffer[MAX_SIZE_TRANSFER + 2];
+static uint8_t rx_buffer[RX_BUF_SIZE];
 
 /*! Thread stack and instance */
 K_THREAD_STACK_DEFINE(MLX90632_thread_stack, 1024);
