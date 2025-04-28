@@ -68,6 +68,7 @@ Description : Original version.
 #include "MAX86178.h"
 #include "sensors_list.h"
 #include "versa_time.h"
+#include "pin_assignments.h"
 
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/disk_access.h>
@@ -183,15 +184,11 @@ bool auto_disconnect = false;
 
 int versa_init(void)
 {
+    nrf_gpio_pin_set(RST_N_PIN);
     //set reset pin to output
     nrf_gpio_cfg_output(RST_N_PIN);
-    //set reset pin to low
-    nrf_gpio_pin_clear(RST_N_PIN);
-    k_sleep(K_MSEC(100));
-    //set reset pin to high
-    nrf_gpio_pin_set(RST_N_PIN);
-    k_sleep(K_MSEC(100));
 
+    
     int ret;
 
     // Initialize the BLE
@@ -204,9 +201,30 @@ int versa_init(void)
     storage_init();
     k_sleep(K_MSEC(500));
 
+    enable_3v3_peripherals();
+    enable_5v();
+    enable_1v8();
+
     // Set the start pin to output low
     nrf_gpio_cfg_output(START_PIN);
     nrf_gpio_pin_clear(START_PIN);
+
+    #ifndef BNO086_DISABLE
+    // If the BNO086 is enabled, initialize it
+    if(vconf_bno086_en)
+    {
+        nrf_gpio_pin_clear(IMU_ENABLE_N); // enable the power supply
+        k_sleep(K_MSEC(10));
+        sensors_list[BNO086_ID].init();
+    }
+    #endif
+
+    nrf_gpio_pin_clear(RST_N_PIN);
+    k_sleep(K_MSEC(100));
+    //set reset pin to high
+    nrf_gpio_pin_set(RST_N_PIN);
+    k_sleep(K_MSEC(100));
+
 
     #ifndef MAX30001_DISABLE
     // If the MAX30001 is enabled, initialize it
@@ -235,16 +253,6 @@ int versa_init(void)
             vconf_t5838_en = 0;
             vconf_mlx90632_en = 0;
         }
-    }
-    #endif
-
-    k_sleep(K_MSEC(50));
-
-    #ifndef BNO086_DISABLE
-    // If the BNO086 is enabled, initialize it
-    if(vconf_bno086_en)
-    {
-        sensors_list[BNO086_ID].init();
     }
     #endif
 
@@ -705,6 +713,35 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
     while(!new_module_thread_stop){
         k_sleep(K_MSEC(3000));
 
+        #ifndef BNO086_DISABLE
+        // Try to initialize the BNO086
+        if(!vconf_bno086_en){
+            nrf_gpio_pin_clear(IMU_ENABLE_N); // enable the power supply
+            k_sleep(K_MSEC(10));
+            vconf_bno086_en = 1;
+            sensors_list[BNO086_ID].init();
+
+            // reset BNO and ADS
+            nrf_gpio_pin_clear(RST_N_PIN);
+            k_sleep(K_MSEC(100));
+            //set reset pin to high
+            nrf_gpio_pin_set(RST_N_PIN);
+            k_sleep(K_MSEC(100));
+
+            // ADS needs to be reconfigured after reset, if it is enabled
+            if(vconf_ads1298_en) {
+                ret = sensors_list[ADS1298_ID].init();
+                // If initialization succeeded, configure the ADS1298
+                if (ret != -2)
+                {
+                    vconf_ads1298_en = 1;
+                    sensors_list[ADS1298_ID].config();
+                }
+            }
+        }
+        #endif
+    
+
         #ifndef ADS1298_DISABLE
         // Try to initialize the ADS1298
         if(!vconf_ads1298_en){
@@ -752,14 +789,6 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
                 sensors_list[MLX90632_ID].config();
                 #endif
             }
-        }
-        #endif
-
-        #ifndef BNO086_DISABLE
-        // Try to initialize the BNO086
-        if(!vconf_bno086_en){
-            vconf_bno086_en = 1;
-            sensors_list[BNO086_ID].init();
         }
         #endif
 
