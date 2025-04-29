@@ -1,0 +1,13 @@
+{
+    "nrf-connect.applications": [
+        "${workspaceFolder}\\VersaSens_FW"
+    ],
+    "files.associations": {
+        "spim_inst.h": "c",
+        "nrfx_spis.h": "c",
+        "nrfx_uarte.h": "c",
+        "nrfx.h": "c",
+        "pin_assignments.h": "c",
+        "mlx90632.h": "c"
+    }
+}
