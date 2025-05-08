@@ -48,6 +48,7 @@ Description : Original version.
 
 // #include "sdk_common.h"
 #include <zephyr/types.h>
+#include "versa_tools.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -102,11 +103,16 @@ typedef union {
     uint8_t frame[19];
 }__attribute__((packed)) bno086_frame_t;
 
+// typedef struct {
+//     int16_t header;
+//     int32_t rawtime_bin;
+//     int16_t time_ms_bin;
+//     uint8_t len;
+//     uint8_t data[13*10];
+// } __attribute__((packed)) BNO086_StorageFormat;
+
 typedef struct {
-    int16_t header;
-    int32_t rawtime_bin;
-    int16_t time_ms_bin;
-    uint8_t len;
+    sensorPacketMetadata_t metadata;
     uint8_t data[13*10];
 } __attribute__((packed)) BNO086_StorageFormat;
 

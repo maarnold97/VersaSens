@@ -53,6 +53,8 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
+LOG_MODULE_REGISTER(VERSA_TOOLS, LOG_LEVEL_INF);
+
 /****************************************************************************/
 /**                                                                        **/
 /*                        TYPEDEFS AND STRUCTURES                           */
@@ -84,25 +86,46 @@ Description : Original version.
 /****************************************************************************/
 
 
-sensorPacketMetadata init_sensor_packet_metadata(uint8_t sensor_id) {
-    sensorPacketMetdata metadata = {0, 0, 0, 0, 0};
-    metadata[0] = ((sensor_id & 0x0F)<<4);
+sensorPacketMetadata_t init_sensor_packet_metadata(uint8_t sensor_id) {
+    sensorPacketMetadata_t metadata = {0};
+    metadata.arr[0] = ((sensor_id & 0x0F)<<4);
     return metadata;
 }
 
-void update_sensor_packet_metadata(sensorPacketMetdata* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index, uint8_t length) {
+sensorPacketMetadata_t init_sensor_packet_metadata_with_length(uint8_t sensor_id, uint8_t length) {
+    sensorPacketMetadata_t metadata = {0};
+    metadata.arr[0] = ((sensor_id & 0x0F)<<4);
+    metadata.arr[4] = length;
+    return metadata;
+}
+
+
+
+void update_sensor_packet_metadata(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index, uint8_t length) {
     if(index >= 4 || time_ms >=1000) {
         LOG_ERR("invalid metadata!\n");
         return;
     }
 
-    uint8_t sensor_id = (*metadata)[0];
-    (*metadata)[0] = sensor_id | ((index & 0x03)<<2) || (uint8_t)((time_ms & 0x0300)>>8);
-    (*metadata)[1] = (uint8_t) (time_ms & 0x00FF);
-    (*metadata)[2] = (uint8_t) ((time_s & 0xFF00)>>8);
-    (*metadata)[3] = (uint8_t) (time_s & 0x00FF);
-    (*metadata)[4] = length;
+    uint8_t sensor_id = metadata->arr[0];
+    metadata->arr[0] = sensor_id | ((index & 0x03)<<2) || (uint8_t)((time_ms & 0x0300)>>8);
+    metadata->arr[1] = (uint8_t) (time_ms & 0x00FF);
+    metadata->arr[2] = (uint8_t) ((time_s & 0xFF00)>>8);
+    metadata->arr[3] = (uint8_t) (time_s & 0x00FF);
+    metadata->arr[4] = length;
+}
 
+void update_sensor_packet_metadata_without_length(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index) {
+    if(index >= 4 || time_ms >=1000) {
+        LOG_ERR("invalid metadata!\n");
+        return;
+    }
+
+    uint8_t sensor_id = metadata->arr[0];
+    metadata->arr[0] = sensor_id | ((index & 0x03)<<2) || (uint8_t)((time_ms & 0x0300)>>8);
+    metadata->arr[1] = (uint8_t) (time_ms & 0x00FF);
+    metadata->arr[2] = (uint8_t) ((time_s & 0xFF00)>>8);
+    metadata->arr[3] = (uint8_t) (time_s & 0x00FF);
 }
 
 

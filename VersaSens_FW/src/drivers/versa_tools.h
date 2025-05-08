@@ -46,7 +46,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-
+#include <zephyr/types.h>
 
 /****************************************************************************/
 /**                                                                        **/
@@ -60,7 +60,9 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-typedef uint8_t sensorPacketMetadata[5];
+typedef struct {
+    uint8_t arr[5];
+} sensorPacketMetadata_t;
 
 
 /****************************************************************************/
@@ -77,8 +79,10 @@ typedef uint8_t sensorPacketMetadata[5];
 /**                                                                        **/
 /****************************************************************************/
 
-sensorPacketMetadata init_sensor_packet_metadata(uint8_t sensor_id);
-void update_sensor_packet_metadata(sensorPacketMetadata* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index, uint8_t length);
+sensorPacketMetadata_t init_sensor_packet_metadata(uint8_t sensor_id);
+sensorPacketMetadata_t init_sensor_packet_metadata_with_length(uint8_t sensor_id, uint8_t length);
+void update_sensor_packet_metadata(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index, uint8_t length);
+void update_sensor_packet_metadata_without_length(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index);
 
 
 
