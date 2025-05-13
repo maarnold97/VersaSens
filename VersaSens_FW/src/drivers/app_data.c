@@ -98,6 +98,7 @@ void app_data_add_to_fifo(uint8_t *data, size_t size)
 {
     if (app_data_fifo_counter >= APP_DATA_FIFO_MAX_SIZE)
     {
+        LOG_ERR("APP DATA FIFO FULL\n");
         return;
     }
 
