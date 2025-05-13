@@ -195,13 +195,13 @@ int versa_init(void)
     int ret;
 
     // Initialize the BLE
-    start_ble();
+    //start_ble();
     // Initialize the I2C instance
     twim_inst_init();
     // Initialize the MAX77658
     MAX77658_init();
     // Initialize the storage
-    storage_init();
+    //storage_init();
     k_sleep(K_MSEC(500));
 
     // Set the start pin to output low
@@ -641,6 +641,8 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3)
     nrf_gpio_cfg_input(MODE_IDLE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
     nrf_gpio_cfg_input(MODE_STORE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
     nrf_gpio_cfg_input(MODE_STREAM_PIN, GPIO_PIN_CNF_PULL_Pulldown);
+    bool storage_is_init = false;
+    bool ble_is_init = false;
 
     while (1)
     {
@@ -665,6 +667,11 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3)
                    nrf_gpio_pin_read(MODE_STREAM_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_STORE))
         {
             // Stop the data stream from the BLE
+            if(!storage_is_init) {
+                storage_init();
+                storage_is_init = true;
+            }
+            
             disable_stream_data();
             // Start the sensor continuous read
             if(!sensor_started)
@@ -681,6 +688,11 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3)
                    nrf_gpio_pin_read(MODE_STORE_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_STREAM))
         {
             // Start the data stream from the BLE
+            if(!ble_is_init) {
+                start_ble();
+                ble_is_init = true;
+            }
+        
             enable_stream_data();
             // Start the sensor continuous read
             if(!sensor_started)

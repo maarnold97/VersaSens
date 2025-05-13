@@ -22,10 +22,11 @@
 #include <ff.h>
 #include <SPI_Heepocrates.h>
 #include "app_data.h"
+#include <zephyr/drivers/led.h>
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
-
+#define LED_PWM_NODE_ID	 DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)
 int main(void)
 {
     nrf_gpio_cfg_output(START_PIN);
@@ -34,8 +35,24 @@ int main(void)
     versa_init();
     // enable_auto_connect();
     versa_config();
+    const struct device *led_pwm;
 
-    versa_start_led_thread();
+    led_pwm = DEVICE_DT_GET(LED_PWM_NODE_ID);
+	if (!device_is_ready(led_pwm)) {
+		LOG_ERR("Device %s is not ready", led_pwm->name);
+	}
+
+    uint8_t i;
+    while(1) {
+        for(i=0;i<3;i++) {
+            //led_set_brightness(led_pwm, i, 50);
+            led_on(led_pwm, i);
+            k_sleep(K_MSEC(1000));
+            led_off(led_pwm,i);
+            k_sleep(K_MSEC(1000));
+        }
+    }
+    // versa_start_led_thread();
     versa_start_mode_thread();
 
     SPI_Heepocrates_init();
