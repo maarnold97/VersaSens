@@ -35,24 +35,33 @@ int main(void)
     versa_init();
     // enable_auto_connect();
     versa_config();
-    const struct device *led_pwm;
+    // const struct device *led_pwm;
 
-    led_pwm = DEVICE_DT_GET(LED_PWM_NODE_ID);
-	if (!device_is_ready(led_pwm)) {
-		LOG_ERR("Device %s is not ready", led_pwm->name);
-	}
+    // led_pwm = DEVICE_DT_GET(LED_PWM_NODE_ID);
+	// if (!device_is_ready(led_pwm)) {
+	// 	LOG_ERR("Device %s is not ready", led_pwm->name);
+	// }
 
-    uint8_t i;
-    while(1) {
-        for(i=0;i<3;i++) {
-            //led_set_brightness(led_pwm, i, 50);
-            led_on(led_pwm, i);
-            k_sleep(K_MSEC(1000));
-            led_off(led_pwm,i);
-            k_sleep(K_MSEC(1000));
-        }
-    }
+    // uint8_t i;
+    // while(1) {
+    //     for(i=0;i<3;i++) {
+    //         //led_set_brightness(led_pwm, i, 50);
+    //         led_on(led_pwm, i);
+    //         k_sleep(K_MSEC(1000));
+    //         led_off(led_pwm,i);
+    //         k_sleep(K_MSEC(1000));
+    //     }
+    // }
     // versa_start_led_thread();
+
+    nrf_gpio_cfg_output(GREEN_LED_PIN);
+    nrf_gpio_pin_set(GREEN_LED_PIN);
+
+    nrf_gpio_cfg_output(RED_LED_PIN);
+    nrf_gpio_pin_set(RED_LED_PIN);
+
+    nrf_gpio_cfg_output(YELLOW_LED_PIN);
+    nrf_gpio_pin_set(YELLOW_LED_PIN);
     versa_start_mode_thread();
 
     SPI_Heepocrates_init();
