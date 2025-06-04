@@ -1,5 +1,9 @@
 {
     "nrf-connect.applications": [
         "${workspaceFolder}\\VersaSens_FW"
-    ]
+    ],
+    "files.associations": {
+        "nrfx_spis.h": "c",
+        "nrf_spis.h": "c"
+    }
 }

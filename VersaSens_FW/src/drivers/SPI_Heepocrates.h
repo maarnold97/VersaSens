@@ -65,7 +65,7 @@ Description : Original version.
 #define CSN_PIN_SLAVE 6
 
 /* Maximum size of the data from the sensor */
-#define MAX_DATA_SIZE_HEEPO 512
+#define MAX_DATA_SIZE_HEEPO 65536
 
 /* FIFO max number of elements */
 #define SPI_HEEPOCRATES_FIFO_SIZE 100
