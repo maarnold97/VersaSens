@@ -42,7 +42,7 @@ Description : Original version.
 
 #include <nrfx_gpiote.h>
 
-// ====================== SPI INTERFACE ========================
+// ===================== SPIM INTERFACE ========================
 #define SPI_SCK  NRF_GPIO_PIN_MAP(0,31)
 #define SPI_MOSI NRF_GPIO_PIN_MAP(1,14)
 #define SPI_MISO NRF_GPIO_PIN_MAP(1,13)
@@ -98,6 +98,13 @@ Description : Original version.
 #define RED_LED       NRF_GPIO_PIN_MAP(1,4)
 #define GREEN_LED     NRF_GPIO_PIN_MAP(0,19)
 #define YELLOW_LED    NRF_GPIO_PIN_MAP(0,12)
+
+// ===================== HEEPO INTERFACE =======================
+
+#define SCK_PIN_SLAVE  NRF_GPIO_PIN_MAP(1,0)
+#define MOSI_PIN_SLAVE NRF_GPIO_PIN_MAP(1,1)
+#define MISO_PIN_SLAVE NRF_GPIO_PIN_MAP(1,15)
+#define CSN_PIN_SLAVE  NRF_GPIO_PIN_MAP(0,6)
 
 // ===================== OTHER INTERFACE =======================
 #define MODE_BTN_N    NRF_GPIO_PIN_MAP(0,24)
