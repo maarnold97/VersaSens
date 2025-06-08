@@ -50,6 +50,7 @@ Description : Original version.
 #include <zephyr/types.h>
 #include <nrfx_twim.h>
 #include <zephyr/kernel.h>
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -57,8 +58,8 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-#define TWIM_SCL_PIN 47
-#define TWIM_SDA_PIN 33
+#define TWIM_SCL_PIN I2C_SCL
+#define TWIM_SDA_PIN I2C_SDA
 
 #define TWIM_INST_IDX 2
 

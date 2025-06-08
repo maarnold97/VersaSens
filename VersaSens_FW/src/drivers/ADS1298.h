@@ -50,6 +50,7 @@ Description : Original version.
 #include <zephyr/types.h>
 #include "twim_inst.h"
 #include "thread_config.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -58,12 +59,12 @@ Description : Original version.
 /****************************************************************************/
 
 /*! ADS1298 SPI settings */
-#define ADS_SCK_PIN 29
-#define ADS_MOSI_PIN 30
-#define ADS_MISO_PIN 32
-#define ADS_SS_PIN 7
-#define ADS_INT_PIN 28
+#define ADS_SCK_PIN SPI_SCK
+#define ADS_MOSI_PIN SPI_MOSI
+#define ADS_MISO_PIN SPI_MISO
+
 #define ADS_INST_IDX 3
+
 
 /*! DEVICE SETTINGS registers*/
 #define REG_ID_Addr             0x00 // read-olny ID control register

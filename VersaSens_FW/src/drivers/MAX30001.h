@@ -51,6 +51,7 @@ Description : Original version.
 #include "twim_inst.h"
 #include "thread_config.h"
 #include "versa_config.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -58,11 +59,10 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-#define MAX_SCK_PIN 29
-#define MAX_MOSI_PIN 30
-#define MAX_MISO_PIN 32
-#define MAX_SS_PIN 46
-#define MAX_INT_PIN 44
+#define MAX_SCK_PIN SPI_SCK
+#define MAX_MOSI_PIN SPI_MOSI
+#define MAX_MISO_PIN SPI_MISO
+
 
 /*!MAX30001 SPIM Instance*/
 #define MAX_INST_IDX 3

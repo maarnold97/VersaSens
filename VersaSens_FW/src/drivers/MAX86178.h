@@ -50,6 +50,7 @@ Description : Original version.
 #include <zephyr/types.h>
 #include "twim_inst.h"
 #include "thread_config.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -67,7 +68,6 @@ Description : Original version.
 #define RX_BUF_SIZE                  200
 
 /*MAX86178 interrupt pin*/
-#define MAX86178_INT_PIN             42
 
 /*Number of measurements read from the MAX86178 fifo*/
 #define MAX86178_FIFO_READ_SIZE      150

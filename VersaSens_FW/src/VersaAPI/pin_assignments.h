@@ -40,7 +40,7 @@ Description : Original version.
 #ifndef _PIN_ASSIGNMENTS_H
 #define _PIN_ASSIGNMENTS_H
 
-#include <nrfx.h>
+#include <nrfx_gpiote.h>
 
 // ====================== SPI INTERFACE ========================
 #define SPI_SCK  NRF_GPIO_PIN_MAP(0,31)
@@ -55,9 +55,9 @@ Description : Original version.
 #define PDM_CLK  NRF_GPIO_PIN_MAP(1,2)
 #define PDM_DATA NRF_GPIO_PIN_MAP(1,3)
 
-// ====================== PDM INTERFACE ========================
-#define PDM_CLK  NRF_GPIO_PIN_MAP(1,2)
-#define PDM_DATA NRF_GPIO_PIN_MAP(1,3)
+// ===================== UARTE INTERFACE =======================
+#define UART_RX  NRF_GPIO_PIN_MAP(0,21)
+#define UART_TX  NRF_GPIO_PIN_MAP(1,6)
 
 // ==================== SD CARD INTERFACE ======================
 #define SD_CS_N  NRF_GPIO_PIN_MAP(0,11)
@@ -82,6 +82,17 @@ Description : Original version.
 #define IMU_INT       NRF_GPIO_PIN_MAP(1,8)
 #define IMU_RX        NRF_GPIO_PIN_MAP(0,21)
 #define IMU_TX        NRF_GPIO_PIN_MAP(1,6)
+
+// ==================== ADS1298 INTERFACE ======================
+#define ADS_SS_PIN 7 // to recheck
+#define ADS_INT_PIN 28 // to recheck
+
+// =================== MAX30001 INTERFACE ======================
+#define MAX_SS_PIN 46 // to recheck
+#define MAX_INT_PIN 44 // to recheck
+
+// ==================== AX86178 INTERFACE ======================
+#define MAX86178_INT_PIN   42 // to recheck
 
 // ====================== LED INTERFACE ========================
 #define RED_LED       NRF_GPIO_PIN_MAP(1,4)

@@ -48,6 +48,7 @@ Description : Original version.
 
 #include <zephyr/types.h>
 #include "thread_config.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -56,8 +57,8 @@ Description : Original version.
 /****************************************************************************/
 
 /*! PDM pin configuration */
-#define PDM_CLK_PIN         43
-#define PDM_DATA_PIN        35
+#define PDM_CLK_PIN         PDM_CLK
+#define PDM_DATA_PIN        PDM_DATA
 
 #define OPUS_COMPLEXITY 1
 #define OPUS_VBR 1

@@ -49,6 +49,7 @@ Description : Original version.
 // #include "sdk_common.h"
 #include <zephyr/types.h>
 #include "twim_inst.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -64,8 +65,8 @@ Description : Original version.
 #define MAX_SIZE_TRANSFER           20  
 
 /*!MAX77658 TWI pins*/
-#define MAX77658_SCL_PIN            47
-#define MAX77658_SDA_PIN            33
+#define MAX77658_SCL_PIN            I2C_SCL
+#define MAX77658_SDA_PIN            I2C_SDA
 
 /*!Registers addresses*/
 
