@@ -339,6 +339,16 @@ int MAX77658_init(void){
     reg.REG_CNFG_LDO0_A.b.TV_LDO0 = 0x70; // 3.3V output
     MAX77658_write_8bit(REG_CNFG_LDO0_A_ADDR, reg.REG_CNFG_LDO0_A.w);
 
+    // SBB2, 5V output 
+    // first disable sbb2, then change output to 5V. It is then enabled in a separate function
+    reg.REG_CNFG_SBB2_B.b.OP_MODE = 0b00; //automatic
+    reg.REG_CNFG_SBB2_B.b.IP_SBB2 = 0b00; //1A peak current limit
+    reg.REG_CNFG_SBB2_B.b.ADE_SBB2 = 0b1; //active discharge resistor enabled
+    reg.REG_CNFG_SBB2_B.b.EN_SBB2 = 0b100; //disable
+    MAX77658_write_8bit(REG_CNFG_SBB2_B_ADDR, reg.REG_CNFG_SBB2_B.w);
+    reg.REG_CNFG_SBB2_A.b.TV_SBB2 = 0xb4; // 5V output
+    MAX77658_write_8bit(REG_CNFG_SBB2_A_ADDR, reg.REG_CNFG_SBB2_A.w);
+
 
 
     reg.REG_CNFG_CHG_E.b.CHG_CC = 0x3F;             //300mA
