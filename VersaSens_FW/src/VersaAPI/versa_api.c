@@ -197,6 +197,7 @@ int versa_init(void)
     twim_inst_init();
     // Initialize the MAX77658
     MAX77658_init();
+    tlp0102_init();
     // Initialize the storage
     storage_init();
     k_sleep(K_MSEC(500));
@@ -651,8 +652,11 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3)
     // nrf_gpio_cfg_input(MODE_STORE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
     // nrf_gpio_cfg_input(MODE_STREAM_PIN, GPIO_PIN_CNF_PULL_Pulldown);
 
-            versa_set_mode(MODE_IDLE);
-            set_status(BLE_STATUS_IDLE);
+    versa_set_mode(MODE_STREAM);
+    set_status(BLE_STATUS_STREAM);
+    enable_stream_data();
+    versa_sensor_start();
+
 
     while (1)
     {

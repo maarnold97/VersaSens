@@ -22,6 +22,7 @@
 #include <ff.h>
 #include <SPI_Heepocrates.h>
 #include "app_data.h"
+#include "tlp0102.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
@@ -39,6 +40,19 @@ int main(void)
     versa_start_mode_thread();
 
     SPI_Heepocrates_init();
+
+    k_sleep(K_MSEC(5000));
+
+    tlp0102_set_core_res(0, false);
+    k_sleep(K_MSEC(1000));
+    tlp0102_set_cgra_res(0, false);
+    k_sleep(K_MSEC(1000));
+
+    uint8_t data;
+
+    tlp0102_read_reg(ACR_ADDRESS, &data);
+    LOG_ERR("ACR_REG = 0x%02x", data);
+
 
     while (1)
     {
