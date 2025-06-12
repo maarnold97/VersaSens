@@ -48,6 +48,7 @@ Description : Original version.
 
 #include <zephyr/types.h>
 #include <zephyr/kernel.h>
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -59,10 +60,6 @@ Description : Original version.
 // #define HEEPO_USE_TIMER
 
 #define SPIS_INST_IDX 0
-#define SCK_PIN_SLAVE 4
-#define MOSI_PIN_SLAVE 0
-#define MISO_PIN_SLAVE 34
-#define CSN_PIN_SLAVE 6
 
 /* Maximum size of the data from the sensor */
 #define MAX_DATA_SIZE_HEEPO 512
@@ -71,7 +68,7 @@ Description : Original version.
 #define SPI_HEEPOCRATES_FIFO_SIZE 100
 
 /* SPI Heepocrates ready signal pin */
-#define PIN_HEEPO_RDY 22
+
 
 /****************************************************************************/
 /**                                                                        **/
