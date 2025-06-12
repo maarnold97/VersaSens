@@ -57,6 +57,7 @@ Description : Original version.
 #include "versa_config.h"
 #include "SPI_Heepocrates.h"
 #include "app_data.h"
+#include "twim_inst.h"
 
 
 
@@ -70,9 +71,7 @@ LOG_MODULE_REGISTER(tlp0102, LOG_LEVEL_INF);
 
 #define DIGI_POT_I2C_ADDRESS 0b01010000
 
-#define IV_WRA_ADDRESS 0x00
-#define IV_WRB_ADDRESS 0x01
-#define ACR_ADDRESS    0x10
+
 
 typedef struct {  
     union                                                                                                
@@ -165,6 +164,11 @@ int tlp0102_set_cgra_res(uint8_t val, bool non_volatile) {
         return -1;
     }
     return tlp0102_write_reg(IV_WRA_ADDRESS, val);
+}
+
+int tlp0102_init(void) {
+    nrfx_twim_t *I2cInstPtr = twim_get_instance();
+    I2cInstancePtr=I2cInstPtr;
 }
 
 

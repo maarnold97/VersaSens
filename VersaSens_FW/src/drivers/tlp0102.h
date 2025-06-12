@@ -56,6 +56,9 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
+#define IV_WRA_ADDRESS 0x00
+#define IV_WRB_ADDRESS 0x01
+#define ACR_ADDRESS    0x10
 
 
 /****************************************************************************/
@@ -75,6 +78,8 @@ int tlp0102_set_core_res(uint8_t val, bool non_volatile);
  * @return 0 on success, -1 on failure.
  */
 int tlp0102_set_cgra_res(uint8_t val, bool non_volatile);
+
+int tlp0102_read_reg(uint8_t addr, uint8_t *data);
 
 /****************************************************************************/
 /**                                                                        **/
