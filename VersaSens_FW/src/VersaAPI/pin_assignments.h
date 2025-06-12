@@ -105,6 +105,7 @@ Description : Original version.
 #define MOSI_PIN_SLAVE NRF_GPIO_PIN_MAP(1,1)
 #define MISO_PIN_SLAVE NRF_GPIO_PIN_MAP(1,15)
 #define CSN_PIN_SLAVE  NRF_GPIO_PIN_MAP(0,6)
+#define PIN_HEEPO_RDY 22
 
 // ===================== OTHER INTERFACE =======================
 #define MODE_BTN_N    NRF_GPIO_PIN_MAP(0,24)
