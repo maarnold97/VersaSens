@@ -69,10 +69,7 @@ int main(void)
 
     k_sleep(K_MSEC(5000));
 
-    tlp0102_set_core_res(0, false);
-    k_sleep(K_MSEC(1000));
-    tlp0102_set_cgra_res(0, false);
-    k_sleep(K_MSEC(1000));
+
 
     uint8_t data;
 

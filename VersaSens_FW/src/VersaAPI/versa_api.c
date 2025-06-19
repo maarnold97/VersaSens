@@ -221,6 +221,8 @@ int versa_init(void)
     #endif
 
     nrf_gpio_pin_clear(RST_N_PIN);
+    tlp0102_set_core_res(0, false);
+    tlp0102_set_cgra_res(0, false);
     k_sleep(K_MSEC(100));
     //set reset pin to high
     nrf_gpio_pin_set(RST_N_PIN);
