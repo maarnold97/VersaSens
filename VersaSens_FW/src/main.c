@@ -54,27 +54,11 @@ int main(void)
     //     }
     // }
     // versa_start_led_thread();
-
-    nrf_gpio_cfg_output(GREEN_LED_PIN);
-    nrf_gpio_pin_set(GREEN_LED_PIN);
-
-    nrf_gpio_cfg_output(RED_LED_PIN);
-    nrf_gpio_pin_set(RED_LED_PIN);
-
-    nrf_gpio_cfg_output(YELLOW_LED_PIN);
-    nrf_gpio_pin_set(YELLOW_LED_PIN);
     versa_start_mode_thread();
 
     SPI_Heepocrates_init();
 
     k_sleep(K_MSEC(5000));
-
-
-
-    uint8_t data;
-
-    tlp0102_read_reg(ACR_ADDRESS, &data);
-    LOG_ERR("ACR_REG = 0x%02x", data);
 
 
     while (1)
