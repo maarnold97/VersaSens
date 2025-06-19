@@ -62,10 +62,10 @@ Description : Original version.
 /** @brief Symbol specifying message to be sent via SPIS data transfer. */
 #define MSG_TO_SEND_SLAVE "test message"
 
-#define MAX_FIFO_SIZE 100
+#define MAX_FIFO_SIZE 1000
 #define MAX_BYTES_PER_MEASUREMENT 4
-#define MAX_CHUNK_SIZE 10
-#define MIN_CHUNK_SIZE 2
+#define MAX_CHUNK_SIZE 1000
+#define MIN_CHUNK_SIZE 200
 #define CHUNK_STEP_SIZE 1
 #define MAX_LATENCY_MS 500
 
@@ -393,7 +393,7 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
     bufferSize = 0;
     targetWriteBuffer = buffer0;
     while(!HEEPO_stop_thread_flag) {
-        struct sensor_data_heepo *p_data = k_fifo_get(&heepo_fifo, K_FOREVER);
+        p_data = k_fifo_get(&heepo_fifo, K_FOREVER);
         atomic_dec(&heepo_fifo_counter);
         bufferSize += p_data->size;
         memcpy(targetWriteBuffer+bufferSize+sizeof(bufferSize), p_data->data, p_data->size); 
