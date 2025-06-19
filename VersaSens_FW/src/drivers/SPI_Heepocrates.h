@@ -73,6 +73,8 @@ Description : Original version.
 /* SPI Heepocrates ready signal pin */
 #define PIN_HEEPO_RDY 22
 
+#define MAX_RESULT_SIZE 4
+
 /****************************************************************************/
 /**                                                                        **/
 /**                       TYPEDEFS AND STRUCTURES                          **/
@@ -84,6 +86,16 @@ struct sensor_data_heepo {
 	uint8_t data[MAX_DATA_SIZE_HEEPO];  // sensor data
 	size_t size;  // size of the data
 };
+
+typedef struct {
+    int16_t header;
+    int32_t rawtime_bin;
+    int16_t time_ms_bin;
+    int8_t len;
+    uint8_t index;
+    uint8_t data[MAX_RESULT_SIZE];
+	uint8_t size;
+} __attribute__((packed)) HEEPO_result_t;
 
 /****************************************************************************/
 /**                                                                        **/

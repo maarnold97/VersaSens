@@ -124,7 +124,7 @@ void handle_spi_buffers_set_thread_func(void *arg1, void *arg2, void *arg3);
 static uint8_t m_tx_buffer_slave[300] = MSG_TO_SEND_SLAVE;
 
 /** @brief Receive buffer defined with the size to store specified message ( @ref MSG_TO_SEND_MASTER ). */
-static uint8_t m_rx_buffer_slave[100] = MSG_TO_SEND_SLAVE;
+static uint8_t m_rx_buffer_slave[65536] = MSG_TO_SEND_SLAVE;
 
 nrfx_spis_t spis_inst = NRFX_SPIS_INSTANCE(SPIS_INST_IDX);
 
@@ -388,6 +388,7 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
         }
         counter++;
     }
+    atomic_val_t fifo_counter;
 
     bufferSize = 0;
     targetWriteBuffer = buffer0;
@@ -403,8 +404,12 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
             memcpy(targetWriteBuffer, &bufferSize, sizeof(bufferSize));
             if(k_sem_take(&HEEPO_BUSY, K_NO_WAIT) == -EBUSY) {
                 k_sem_take(&HEEPO_BUSY, K_FOREVER);
-                // figure this out
-                chunkSize = (chunkSize/2 >= MIN_CHUNK_SIZE) ? chunkSize/2 : MIN_CHUNK_SIZE;
+                fifo_counter = atomic_get(&heepo_fifo_counter);
+                if(((float)fifo_counter/(float)MIN_CHUNK_SIZE) > 1 ) {
+                    chunkSize = (chunkSize/2 >= MIN_CHUNK_SIZE) ? chunkSize/2 : MIN_CHUNK_SIZE;
+                } else {
+                    chunkSize = (chunkSize - CHUNK_STEP_SIZE > MIN_CHUNK_SIZE) ? chunkSize - CHUNK_STEP_SIZE : MIN_CHUNK_SIZE;
+                }
             } else {
                 chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
 
@@ -451,20 +456,6 @@ void calculate_latency_thread_func(void *arg1, void *arg2, void *arg3) {
     k_thread_abort(k_current_get());
 }
 
-// void calculate_next_chunk_size_operation(uint32_t *currentChunkSize) {
-
-// }
-// uint32_t calculate_next_chunk_size_calibration(uint32_t *currentChunkSize) {
-//     static bool setBuffersFirstTime = true;
-//     uint16_t bufferSize;
-//     if(setBuffersFirstTime) {
-//         memcpy(&bufferSize, spiDataBuffer, sizeof(bufferSize));
-//         nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
-//         setBuffersFirstTime = false;
-//     }
-//     while(!intAsserted);
-//     int64_t startTime = k_uptime_get();
-// }
 
 void handle_spi_buffers_set_thread_func(void *arg1, void *arg2, void *arg3) { // very high priority
     while(!calibrationDone) {
@@ -531,7 +522,11 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
                 spiDataBuffer = (spiDataBuffer == buffer0) ? buffer1 : buffer0; 
                 break;
             case RESULT_CMD:
-                // do something with result
+                LOG_INF("Received Result.");
+                uint32_t i;
+                for(i=0; i<MAX_RESULT_SIZE;i++) {
+                    LOG_INF("SPIS rx buffer[%d]: 0x%02x",i, m_rx_buffer_slave[i]);
+                }
                 k_sem_give(&HEEPO_BUSY);                    
                 break;
             default:
