@@ -60,7 +60,6 @@ Description : Original version.
 #include "versa_config.h"
 #include "SPI_Heepocrates.h"
 #include "app_data.h"
-
 #include "opus.h"
 #include "opus_types.h"
 #include "opus_private.h"

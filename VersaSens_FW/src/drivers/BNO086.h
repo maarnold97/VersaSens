@@ -49,6 +49,7 @@ Description : Original version.
 // #include "sdk_common.h"
 #include <zephyr/types.h>
 #include "versa_tools.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -66,11 +67,11 @@ Description : Original version.
 #define IMU_PREFIX_LENGTH	1
 #define IMU_FRAME_LENGTH	BNO086_RVC_MSG_LENGTH
 
-#define BNO_RST_N_Pin       23
+#define BNO_RST_N_Pin       RESET_OUT_N
 
 #define UARTE_INST_IDX      1
-#define UARTE_RX_PIN        21
-#define UARTE_TX_PIN        38
+#define UARTE_RX_PIN        UART_RX
+#define UARTE_TX_PIN        UART_TX
 
 /****************************************************************************/
 /**                                                                        **/

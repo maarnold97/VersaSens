@@ -50,6 +50,7 @@ Description : Original version.
 #include <zephyr/types.h>
 #include "twim_inst.h"
 #include "versa_tools.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -65,8 +66,8 @@ Description : Original version.
 #define MAX_SIZE_TRANSFER           20  
 
 /*!MAX77658 TWI pins*/
-#define MAX77658_SCL_PIN            47
-#define MAX77658_SDA_PIN            33
+#define MAX77658_SCL_PIN            I2C_SCL
+#define MAX77658_SDA_PIN            I2C_SDA
 
 /*!Registers addresses*/
 
@@ -1070,6 +1071,48 @@ bool get_temperature_high(void);
  * @return true if the battery is low, false otherwise.
  */
 bool get_battery_low(void);
+
+/**
+ * @brief This function disables +3V3_Peripherals and enables the active discharge resistor.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int disable_3v3_peripherals(void);
+
+/**
+ * @brief This function enables +3V3_Peripherals.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int enable_3v3_peripherals(void);
+
+/**
+ * @brief This function enables +5V.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int enable_5v(void);
+
+/**
+ * @brief This function disables +5V and enables the active discharge resistor.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int disable_5v(void);
+
+/**
+ * @brief This function enables +1V8.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int enable_1v8(void);
+
+/**
+ * @brief This function disables +1V8 and enables the active discharge resistor.
+ * 
+ * @return 0 if successful, -1 otherwise.
+ */
+int disable_1v8(void);
 
 /****************************************************************************/
 /**                                                                        **/

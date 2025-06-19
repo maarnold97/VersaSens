@@ -68,6 +68,7 @@ Description : Original version.
 #include "MAX86178.h"
 #include "sensors_list.h"
 #include "versa_time.h"
+#include "pin_assignments.h"
 
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/disk_access.h>
@@ -183,15 +184,11 @@ bool auto_disconnect = false;
 
 int versa_init(void)
 {
+    nrf_gpio_pin_set(RST_N_PIN);
     //set reset pin to output
     nrf_gpio_cfg_output(RST_N_PIN);
-    //set reset pin to low
-    nrf_gpio_pin_clear(RST_N_PIN);
-    k_sleep(K_MSEC(100));
-    //set reset pin to high
-    nrf_gpio_pin_set(RST_N_PIN);
-    k_sleep(K_MSEC(100));
 
+    
     int ret;
 
     // Initialize the BLE
@@ -200,13 +197,35 @@ int versa_init(void)
     twim_inst_init();
     // Initialize the MAX77658
     MAX77658_init();
+    tlp0102_init();
     // Initialize the storage
     //storage_init();
     k_sleep(K_MSEC(500));
 
+    enable_3v3_peripherals();
+    enable_5v();
+    enable_1v8();
+
     // Set the start pin to output low
     nrf_gpio_cfg_output(START_PIN);
     nrf_gpio_pin_clear(START_PIN);
+
+    #ifndef BNO086_DISABLE
+    // If the BNO086 is enabled, initialize it
+    if(vconf_bno086_en)
+    {
+        nrf_gpio_pin_clear(IMU_ENABLE_N); // enable the power supply
+        k_sleep(K_MSEC(10));
+        sensors_list[BNO086_ID].init();
+    }
+    #endif
+
+    nrf_gpio_pin_clear(RST_N_PIN);
+    k_sleep(K_MSEC(100));
+    //set reset pin to high
+    nrf_gpio_pin_set(RST_N_PIN);
+    k_sleep(K_MSEC(100));
+
 
     #ifndef MAX30001_DISABLE
     // If the MAX30001 is enabled, initialize it
@@ -235,16 +254,6 @@ int versa_init(void)
             vconf_t5838_en = 0;
             vconf_mlx90632_en = 0;
         }
-    }
-    #endif
-
-    k_sleep(K_MSEC(50));
-
-    #ifndef BNO086_DISABLE
-    // If the BNO086 is enabled, initialize it
-    if(vconf_bno086_en)
-    {
-        sensors_list[BNO086_ID].init();
     }
     #endif
 
@@ -572,59 +581,60 @@ int versa_get_mode(void)
 void LED_thread_func(void *arg1, void *arg2, void *arg3)
 {
     // Set the LED pins to output
-    nrf_gpio_cfg_output(GREEN_LED_PIN);
-    nrf_gpio_pin_clear(GREEN_LED_PIN);
+    nrf_gpio_cfg_output(GREEN_LED);
+    nrf_gpio_pin_clear(GREEN_LED);
 
-    nrf_gpio_cfg_output(RED_LED_PIN);
-    nrf_gpio_pin_clear(RED_LED_PIN);
+    nrf_gpio_cfg_output(RED_LED);
+    nrf_gpio_pin_clear(RED_LED);
 
-    nrf_gpio_cfg_output(YELLOW_LED_PIN);
-    nrf_gpio_pin_clear(YELLOW_LED_PIN);
+    nrf_gpio_cfg_output(YELLOW_LED);
+    nrf_gpio_pin_clear(YELLOW_LED);
+    k_sleep(K_MSEC(5000));
 
     // Update the LED status depending on the mode and events
     while (1)
     {
         if (get_temperature_high())
         {
-            nrf_gpio_pin_set(GREEN_LED_PIN);
-            nrf_gpio_pin_clear(RED_LED_PIN);
-            nrf_gpio_pin_set(YELLOW_LED_PIN);
+            nrf_gpio_pin_set(GREEN_LED);
+            nrf_gpio_pin_clear(RED_LED);
+            nrf_gpio_pin_set(YELLOW_LED);
         }
         else if (get_write_failed())
         {
-            nrf_gpio_pin_set(GREEN_LED_PIN);
-            nrf_gpio_pin_set(RED_LED_PIN);
-            nrf_gpio_pin_set(YELLOW_LED_PIN);
+            nrf_gpio_pin_set(GREEN_LED);
+            nrf_gpio_pin_set(RED_LED);
+            nrf_gpio_pin_set(YELLOW_LED);
         }
         else if (versa_get_mode() == MODE_STORE)
         {
-            nrf_gpio_pin_set(GREEN_LED_PIN);
-            nrf_gpio_pin_toggle(RED_LED_PIN);
-            nrf_gpio_pin_set(YELLOW_LED_PIN);
+            nrf_gpio_pin_set(GREEN_LED);
+            nrf_gpio_pin_toggle(RED_LED);
+            nrf_gpio_pin_set(YELLOW_LED);
         }
         else if (versa_get_mode() == MODE_STREAM)
         {
-            nrf_gpio_pin_set(GREEN_LED_PIN);
-            nrf_gpio_pin_set(RED_LED_PIN);
-            nrf_gpio_pin_toggle(YELLOW_LED_PIN);
+            nrf_gpio_pin_set(GREEN_LED);
+            nrf_gpio_pin_set(RED_LED);
+            nrf_gpio_pin_toggle(YELLOW_LED);
         }
         else if (get_battery_charging())
         {
-            nrf_gpio_pin_toggle(GREEN_LED_PIN);
-            nrf_gpio_pin_set(RED_LED_PIN);
-            nrf_gpio_pin_set(YELLOW_LED_PIN);
+            nrf_gpio_pin_toggle(GREEN_LED);
+            nrf_gpio_pin_set(RED_LED);
+            nrf_gpio_pin_set(YELLOW_LED);
         }
         else if (get_battery_low())
         {
-            nrf_gpio_pin_set(GREEN_LED_PIN);
-            nrf_gpio_pin_set(RED_LED_PIN);
-            nrf_gpio_pin_clear(YELLOW_LED_PIN);
+            nrf_gpio_pin_set(GREEN_LED);
+            nrf_gpio_pin_set(RED_LED);
+            nrf_gpio_pin_clear(YELLOW_LED);
         }
         else if (versa_get_mode() == MODE_IDLE)
         {
-            nrf_gpio_pin_clear(GREEN_LED_PIN);
-            nrf_gpio_pin_set(RED_LED_PIN);
-            nrf_gpio_pin_set(YELLOW_LED_PIN);
+            nrf_gpio_pin_clear(GREEN_LED);
+            nrf_gpio_pin_set(RED_LED);
+            nrf_gpio_pin_set(YELLOW_LED);
         }
 
 
@@ -637,73 +647,67 @@ void LED_thread_func(void *arg1, void *arg2, void *arg3)
 
 void mode_thread_func(void *arg1, void *arg2, void *arg3)
 {
-    // Set the mode switch pins to input
-    nrf_gpio_cfg_input(MODE_IDLE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
-    nrf_gpio_cfg_input(MODE_STORE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
-    nrf_gpio_cfg_input(MODE_STREAM_PIN, GPIO_PIN_CNF_PULL_Pulldown);
-    bool storage_is_init = false;
-    bool ble_is_init = false;
+    // // Set the mode switch pins to input
+    // nrf_gpio_cfg_input(MODE_IDLE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
+    // nrf_gpio_cfg_input(MODE_STORE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
+    // nrf_gpio_cfg_input(MODE_STREAM_PIN, GPIO_PIN_CNF_PULL_Pulldown);
+
+    versa_set_mode(MODE_STREAM);
+    set_status(BLE_STATUS_STREAM);
+    enable_stream_data();
+    versa_sensor_start();
+
 
     while (1)
     {
-        // Update the mode according to the switch, BLE command and BLE overwrite
-        if (((nrf_gpio_pin_read(MODE_IDLE_PIN) > 0 | (nrf_gpio_pin_read(MODE_STORE_PIN)==0 & 
-              nrf_gpio_pin_read(MODE_STREAM_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_IDLE))
-        {
-            // Stop the data stream from the BLE
-            disable_stream_data();
-            // Stop the sensor continuous read
-            if(sensor_started)
-            {
-                sensor_started = false;
-                versa_sensor_stop();
-            }
-            // Update mode and status
-            versa_set_mode(MODE_IDLE);
-            set_status(BLE_STATUS_IDLE);
-        }
-        // Update the mode according to the switch, BLE command and BLE overwrite
-        else if (((nrf_gpio_pin_read(MODE_STORE_PIN) > 0 | (nrf_gpio_pin_read(MODE_IDLE_PIN)==0 & 
-                   nrf_gpio_pin_read(MODE_STREAM_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_STORE))
-        {
-            // Stop the data stream from the BLE
-            if(!storage_is_init) {
-                storage_init();
-                storage_is_init = true;
-            }
-            
-            disable_stream_data();
-            // Start the sensor continuous read
-            if(!sensor_started)
-            {
-                sensor_started = true;
-                versa_sensor_start();
-            }
-            // Update mode and status
-            versa_set_mode(MODE_STORE);
-            set_status(BLE_STATUS_STORE);
-        }
-        // Update the mode according to the switch, BLE command and BLE overwrite
-        else if (((nrf_gpio_pin_read(MODE_STREAM_PIN) > 0 | (nrf_gpio_pin_read(MODE_IDLE_PIN)==0 & 
-                   nrf_gpio_pin_read(MODE_STORE_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_STREAM))
-        {
-            // Start the data stream from the BLE
-            if(!ble_is_init) {
-                start_ble();
-                ble_is_init = true;
-            }
-        
-            enable_stream_data();
-            // Start the sensor continuous read
-            if(!sensor_started)
-            {
-                sensor_started = true;
-                versa_sensor_start();
-            }
-            // Update mode and status
-            versa_set_mode(MODE_STREAM);
-            set_status(BLE_STATUS_STREAM);
-        }
+    //     // Update the mode according to the switch, BLE command and BLE overwrite
+    //     if (((nrf_gpio_pin_read(MODE_IDLE_PIN) > 0 | (nrf_gpio_pin_read(MODE_STORE_PIN)==0 & 
+    //           nrf_gpio_pin_read(MODE_STREAM_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_IDLE))
+    //     {
+    //         // Stop the data stream from the BLE
+    //         disable_stream_data();
+    //         // Stop the sensor continuous read
+    //         if(sensor_started)
+    //         {
+    //             sensor_started = false;
+    //             versa_sensor_stop();
+    //         }
+    //         // Update mode and status
+    //         versa_set_mode(MODE_IDLE);
+    //         set_status(BLE_STATUS_IDLE);
+    //     }
+    //     // Update the mode according to the switch, BLE command and BLE overwrite
+    //     else if (((nrf_gpio_pin_read(MODE_STORE_PIN) > 0 | (nrf_gpio_pin_read(MODE_IDLE_PIN)==0 & 
+    //                nrf_gpio_pin_read(MODE_STREAM_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_STORE))
+    //     {
+    //         // Stop the data stream from the BLE
+    //         disable_stream_data();
+    //         // Start the sensor continuous read
+    //         if(!sensor_started)
+    //         {
+    //             sensor_started = true;
+    //             versa_sensor_start();
+    //         }
+    //         // Update mode and status
+    //         versa_set_mode(MODE_STORE);
+    //         set_status(BLE_STATUS_STORE);
+    //     }
+    //     // Update the mode according to the switch, BLE command and BLE overwrite
+    //     else if (((nrf_gpio_pin_read(MODE_STREAM_PIN) > 0 | (nrf_gpio_pin_read(MODE_IDLE_PIN)==0 & 
+    //                nrf_gpio_pin_read(MODE_STORE_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_STREAM))
+    //     {
+    //         // Start the data stream from the BLE
+    //         enable_stream_data();
+    //         // Start the sensor continuous read
+    //         if(!sensor_started)
+    //         {
+    //             sensor_started = true;
+    //             versa_sensor_start();
+    //         }
+    //         // Update mode and status
+    //         versa_set_mode(MODE_STREAM);
+    //         set_status(BLE_STATUS_STREAM);
+    //     }
 
         k_sleep(K_MSEC(200));
     }
@@ -716,6 +720,35 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
     int ret;
     while(!new_module_thread_stop){
         k_sleep(K_MSEC(3000));
+
+        #ifndef BNO086_DISABLE
+        // Try to initialize the BNO086
+        if(!vconf_bno086_en){
+            nrf_gpio_pin_clear(IMU_ENABLE_N); // enable the power supply
+            k_sleep(K_MSEC(10));
+            vconf_bno086_en = 1;
+            sensors_list[BNO086_ID].init();
+
+            // reset BNO and ADS
+            nrf_gpio_pin_clear(RST_N_PIN);
+            k_sleep(K_MSEC(100));
+            //set reset pin to high
+            nrf_gpio_pin_set(RST_N_PIN);
+            k_sleep(K_MSEC(100));
+
+            // ADS needs to be reconfigured after reset, if it is enabled
+            if(vconf_ads1298_en) {
+                ret = sensors_list[ADS1298_ID].init();
+                // If initialization succeeded, configure the ADS1298
+                if (ret != -2)
+                {
+                    vconf_ads1298_en = 1;
+                    sensors_list[ADS1298_ID].config();
+                }
+            }
+        }
+        #endif
+    
 
         #ifndef ADS1298_DISABLE
         // Try to initialize the ADS1298
@@ -764,14 +797,6 @@ void new_module_thread_func(void *arg1, void *arg2, void *arg3){
                 sensors_list[MLX90632_ID].config();
                 #endif
             }
-        }
-        #endif
-
-        #ifndef BNO086_DISABLE
-        // Try to initialize the BNO086
-        if(!vconf_bno086_en){
-            vconf_bno086_en = 1;
-            sensors_list[BNO086_ID].init();
         }
         #endif
 

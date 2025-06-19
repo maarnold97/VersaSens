@@ -60,6 +60,7 @@ Description : Original version.
 #include "spim_inst.h"
 #include "SPI_Heepocrates.h"
 #include "app_data.h"
+#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
