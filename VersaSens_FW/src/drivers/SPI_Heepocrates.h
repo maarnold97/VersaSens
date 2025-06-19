@@ -65,7 +65,7 @@ Description : Original version.
 #define MAX_DATA_SIZE_HEEPO 65536
 
 /* FIFO max number of elements */
-#define SPI_HEEPOCRATES_FIFO_SIZE 100
+#define SPI_HEEPOCRATES_FIFO_SIZE 10000
 
 /* SPI Heepocrates ready signal pin */
 
