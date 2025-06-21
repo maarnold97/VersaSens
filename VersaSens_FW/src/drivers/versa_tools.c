@@ -117,7 +117,7 @@ void update_sensor_packet_metadata(sensorPacketMetadata_t* metadata, uint16_t ti
 
 void update_sensor_packet_metadata_without_length(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index) {
     if(index >= 4 || time_ms >=1000) {
-        LOG_ERR("invalid metadata!\n");
+        LOG_ERR("invalid metadata! index= %d and time_ns = %d\n", index, time_ms);
         return;
     }
 

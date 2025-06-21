@@ -65,7 +65,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-LOG_MODULE_REGISTER(bno086, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(bno086, LOG_LEVEL_BNO086);
 
 // BNO086 storage format header
 #define BNO_STORAGE_HEADER 0xCCCC

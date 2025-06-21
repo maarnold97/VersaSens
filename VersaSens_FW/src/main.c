@@ -24,7 +24,8 @@
 #include "app_data.h"
 #include <zephyr/drivers/led.h>
 
-LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
+
+LOG_MODULE_REGISTER(main, LOG_LEVEL_MAIN);
 
 #define LED_PWM_NODE_ID	 DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)
 int main(void)
@@ -52,19 +53,11 @@ int main(void)
     //         k_sleep(K_MSEC(1000));
     //     }
     // }
-    // versa_start_led_thread();
-
-    nrf_gpio_cfg_output(GREEN_LED_PIN);
-    nrf_gpio_pin_set(GREEN_LED_PIN);
-
-    nrf_gpio_cfg_output(RED_LED_PIN);
-    nrf_gpio_pin_set(RED_LED_PIN);
-
-    nrf_gpio_cfg_output(YELLOW_LED_PIN);
-    nrf_gpio_pin_set(YELLOW_LED_PIN);
+    versa_start_led_thread();
     versa_start_mode_thread();
 
-    SPI_Heepocrates_init();
+    k_sleep(K_MSEC(5000));
+
 
     while (1)
     {
@@ -82,7 +75,7 @@ int main(void)
         
         if (data != NULL)
         {
-            LOG_INF("Data received from FIFO: %02hx", data->data[0]);
+            // LOG_INF("Data received from FIFO: %02hx", data->data[0]);
             k_free(data);
         }
     }

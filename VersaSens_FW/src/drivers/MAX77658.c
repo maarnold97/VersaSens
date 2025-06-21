@@ -493,7 +493,7 @@ void max77658_thread_func(void *arg1, void *arg2, void *arg3)
 
         // Save the measurements
         if(MAX77658_cont_read){
-            update_sensor_packet_metadata_without_length(&MAX77658_Storage.metadata, time_s_bin, time_ms_bin, index++);
+            update_sensor_packet_metadata_without_length(&MAX77658_Storage.metadata, time_s_bin, time_ms_bin, ((index++)%4));
             MAX77658_Storage.temperature = data_read[0];
             MAX77658_Storage.voltage = data_read[1];
             MAX77658_Storage.current = data_read[2];

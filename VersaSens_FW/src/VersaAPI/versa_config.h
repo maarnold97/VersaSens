@@ -100,7 +100,7 @@ Description : Original version.
 #define VCONF_MLX90632_HEEPO    0
 #define VCONF_T5838_HEEPO       0
 #define VCONF_MAX77658_HEEPO    0
-#define VCONF_BNO086_HEEPO      0
+#define VCONF_BNO086_HEEPO      1
 
 /* App Data configuration */
 #define VCONF_ADS1298_APPDATA   0
@@ -122,6 +122,22 @@ Description : Original version.
 
 /* T5838 configuration */
 // #define VCONF_T5838_STEREO_EN   // uncomment to enable stereo mode
+
+
+/* DEBUG configuration*/
+// #define VERSA_DEBUG
+
+/* LOGGING*/
+
+#ifdef VERSA_DEBUG
+#define LOG_LEVEL_MAIN LOG_LEVEL_INF
+#define LOG_LEVEL_BLE  LOG_LEVEL_INF
+#define LOG_LEVEL_BNO086 LOG_LEVEL_INF
+#else
+#define LOG_LEVEL_MAIN LOG_LEVEL_NONE
+#define LOG_LEVEL_BLE  LOG_LEVEL_NONE
+#define LOG_LEVEL_BNO086 LOG_LEVEL_NONE
+#endif
 
 
 /****************************************************************************/
