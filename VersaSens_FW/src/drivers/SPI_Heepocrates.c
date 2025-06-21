@@ -213,11 +213,11 @@ void SPI_Heepocrates_init(void)
                        NRFX_SPIS_INST_HANDLER_GET(SPIS_INST_IDX), 0);
 
     // Set the ready pin
-    nrf_gpio_cfg_output(PIN_HEEPO_RDY);
-    nrf_gpio_pin_clear(PIN_HEEPO_RDY);
+    // nrf_gpio_cfg_output(PIN_HEEPO_RDY);
+    // nrf_gpio_pin_clear(PIN_HEEPO_RDY);
 
-    // Start the SPI Heepocrates thread
-    SPI_Heepocrates_start(m_tx_buffer_slave, sizeof(m_tx_buffer_slave), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+    // // Start the SPI Heepocrates thread
+    // SPI_Heepocrates_start(m_tx_buffer_slave, sizeof(m_tx_buffer_slave), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
 
     return;
 }

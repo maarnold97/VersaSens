@@ -53,7 +53,7 @@ int main(void)
     //         k_sleep(K_MSEC(1000));
     //     }
     // }
-    // versa_start_led_thread();
+    versa_start_led_thread();
     versa_start_mode_thread();
 
     SPI_Heepocrates_init();
