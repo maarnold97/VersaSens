@@ -264,7 +264,7 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
 void SPI_Heep_add_fifo(uint8_t *data, size_t size)
 {
     // Check if the FIFO is full
-    LOG_INF("SPU_HEEP_ADD_FIFO CALLED");
+    // LOG_INF("SPU_HEEP_ADD_FIFO CALLED");
     if(atomic_get(&heepo_fifo_counter) >= MAX_FIFO_SIZE)
     {
         LOG_ERR("HEEPO FIFO FULL");
