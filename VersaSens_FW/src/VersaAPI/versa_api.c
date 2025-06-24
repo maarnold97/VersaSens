@@ -193,7 +193,7 @@ int versa_init(void)
     k_sleep(K_MSEC(100));
 
     int ret;
-    k_sleep(K_MSEC(10000));
+    k_sleep(K_MSEC(5000));
     SPI_Heepocrates_init();
     
 

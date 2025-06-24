@@ -56,27 +56,18 @@ int main(void)
     versa_start_led_thread();
     versa_start_mode_thread();
 
-    k_sleep(K_MSEC(5000));
+    
 
+
+    uint32_t val = 0;
+    SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+    k_sleep(K_MSEC(5000));
 
     while (1)
     {
-        // data aquisition example
-        k_sleep(K_MSEC(10));
-        struct app_data_struct *data = k_malloc(sizeof(*data));
-        if (data == NULL)
-        {
-            LOG_ERR("Failed to allocate memory for new_data\n");
-        }
-        else
-        {
-            app_data_get_from_fifo(data);
-        }
-        
-        if (data != NULL)
-        {
-            // LOG_INF("Data received from FIFO: %02hx", data->data[0]);
-            k_free(data);
-        }
+        val++;
+        SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+        k_sleep(K_MSEC(40));
+
     }
 }

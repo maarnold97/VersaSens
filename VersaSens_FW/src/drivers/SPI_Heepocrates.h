@@ -70,17 +70,17 @@ Description : Original version.
 /* Maximum size of the data from the sensor */
 #define MAX_DATA_SIZE_HEEPO 65535
 
-#define MAX_FIFO_SIZE 1000
-#define MAX_BYTES_PER_MEASUREMENT 136
-#define MAX_CHUNK_SIZE 400
+#define MAX_BYTES_PER_MEASUREMENT 4
+#define MAX_CHUNK_SIZE 1000
+#define MAX_FIFO_SIZE MAX_CHUNK_SIZE
 
 #if MAX_CHUNK_SIZE*MAX_BYTES_PER_MEASUREMENT > 65531
     #error "MAX_CHUNK_SIZE TOO BIG! has to be smaller thank 2^16 - 4, because that is the biggest SPI transfer possible both on the nRF5340 and HEEPOCRATES"
 #endif
 
-#define MIN_CHUNK_SIZE 100
+#define MIN_CHUNK_SIZE 50
 #define CHUNK_STEP_SIZE 1
-#define MAX_LATENCY_MS 500
+#define MAX_LATENCY_MS 800
 
 #define SEND_DATA_CMD 1
 #define RESULT_CMD    2

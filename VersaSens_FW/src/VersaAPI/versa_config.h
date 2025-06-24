@@ -100,7 +100,7 @@ Description : Original version.
 #define VCONF_MLX90632_HEEPO    0
 #define VCONF_T5838_HEEPO       0
 #define VCONF_MAX77658_HEEPO    0
-#define VCONF_BNO086_HEEPO      1
+#define VCONF_BNO086_HEEPO      0
 
 /* App Data configuration */
 #define VCONF_ADS1298_APPDATA   0

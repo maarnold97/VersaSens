@@ -70,7 +70,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-LOG_MODULE_REGISTER(SPI_Heepocrates, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(SPI_Heepocrates, LOG_LEVEL_DBG);
 
 /****************************************************************************/
 /**                                                                        **/
@@ -129,12 +129,9 @@ typedef struct {
     int64_t time;
 } time_item_t;
 
-/** @brief Buffer for the next measurement to be sent */
-static uint8_t heepo_next_meas[300]; //useless
-uint8_t heepo_next_meas_size; // useless
 
-static uint8_t buffer0[MAX_BYTES_PER_MEASUREMENT*MAX_CHUNK_SIZE];
-static uint8_t buffer1[MAX_BYTES_PER_MEASUREMENT*MAX_CHUNK_SIZE];
+static uint8_t buffer0[MAX_BYTES_PER_MEASUREMENT*MAX_CHUNK_SIZE + sizeof(uint32_t)];
+static uint8_t buffer1[MAX_BYTES_PER_MEASUREMENT*MAX_CHUNK_SIZE + sizeof(uint32_t)];
 static uint8_t *spiDataBuffer = NULL;
 
 static uint32_t chunkSize = MIN_CHUNK_SIZE;
@@ -153,7 +150,7 @@ static atomic_t heepo_fifo_counter = ATOMIC_INIT(0);
 
 /*! Thread stack and instance */
 K_THREAD_STACK_DEFINE(setSpiBuffersThreadStack, 1024);
-K_THREAD_STACK_DEFINE(fillDataBuffersThreadStack, 1024);
+K_THREAD_STACK_DEFINE(fillDataBuffersThreadStack, 8192*2);
 K_THREAD_STACK_DEFINE(handleSpiBuffersSetThreadStack, 1024);
 K_THREAD_STACK_DEFINE(calculateLatencyThreadStack, 1024);
 
@@ -171,7 +168,6 @@ K_SEM_DEFINE(SPI_BUFFERS_SET, 0, 1);
 
 K_SEM_DEFINE(HEEPO_BUSY, 2,2);
 
-K_SEM_DEFINE(SPI_BUFFERS_AVAILABLE, 2,2);
 
 /****************************************************************************/
 /**                                                                        **/
@@ -182,7 +178,7 @@ K_SEM_DEFINE(SPI_BUFFERS_AVAILABLE, 2,2);
 void SPI_Heepocrates_init(void)
 {
     /* Assign pin 0 and 1 to the MCUAPP */
-    LOG_INF("start heepo init");
+    LOG_DBG("start heepo init");
     nrf_gpio_pin_control_select(0, NRF_GPIO_PIN_SEL_APP);
     nrf_gpio_pin_control_select(1, NRF_GPIO_PIN_SEL_APP);
 
@@ -202,7 +198,7 @@ void SPI_Heepocrates_init(void)
     status = nrfx_spis_init(&spis_inst, &spis_config, spis_handler, p_context);
     NRFX_ASSERT(status == NRFX_SUCCESS);
 
-    LOG_INF("spis init");
+    LOG_DBG("spis init");
 
     IRQ_DIRECT_CONNECT(NRFX_IRQ_NUMBER_GET(NRF_SPIS_INST_GET(SPIS_INST_IDX)), IRQ_PRIO_LOWEST,
                        NRFX_SPIS_INST_HANDLER_GET(SPIS_INST_IDX), 0);
@@ -239,22 +235,22 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
     }
  
     k_thread_create(&setSpiBuffersThread, setSpiBuffersThreadStack, K_THREAD_STACK_SIZEOF(setSpiBuffersThreadStack),
-                    set_spi_buffers_thread_func, NULL, NULL, NULL, 10, 0, K_NO_WAIT);
+                    set_spi_buffers_thread_func, NULL, NULL, NULL, 13, 0, K_NO_WAIT);
     k_thread_name_set(&setSpiBuffersThread, "setSpiBuffersThread");
 
     k_thread_create(&calculateLatencyThread, calculateLatencyThreadStack, K_THREAD_STACK_SIZEOF(calculateLatencyThreadStack),
-                    calculate_latency_thread_func, NULL, NULL, NULL, 8, 0, K_NO_WAIT);
+                    calculate_latency_thread_func, NULL, NULL, NULL, 10, 0, K_NO_WAIT);
     k_thread_name_set(&calculateLatencyThread, "calculateLatencyThread");
 
     k_thread_create(&fillDataBuffersThread, fillDataBuffersThreadStack, K_THREAD_STACK_SIZEOF(fillDataBuffersThreadStack),
-                    fill_data_buffers_thread_func, NULL, NULL, NULL, 8, 0, K_NO_WAIT);
+                    fill_data_buffers_thread_func, NULL, NULL, NULL, 11, 0, K_NO_WAIT);
     k_thread_name_set(&fillDataBuffersThread, "fillDataBuffersThread");
 
     k_thread_create(&handleSpiBuffersSetThread, handleSpiBuffersSetThreadStack, K_THREAD_STACK_SIZEOF(handleSpiBuffersSetThreadStack),
-                    handle_spi_buffers_set_thread_func, NULL, NULL, NULL, 9, 0, K_NO_WAIT);
+                    handle_spi_buffers_set_thread_func, NULL, NULL, NULL, 12, 0, K_NO_WAIT);
     k_thread_name_set(&handleSpiBuffersSetThread, "handleSpiBuffersSetThread");
 
-    LOG_INF("heepo init");
+    LOG_DBG("heepo init");
     return;
 }
 
@@ -264,7 +260,7 @@ void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * 
 void SPI_Heep_add_fifo(uint8_t *data, size_t size)
 {
     // Check if the FIFO is full
-    // LOG_INF("SPU_HEEP_ADD_FIFO CALLED");
+    // LOG_DBG("SPU_HEEP_ADD_FIFO CALLED. calibrationDone = %d", calibrationDone);
     if(atomic_get(&heepo_fifo_counter) >= MAX_FIFO_SIZE)
     {
         LOG_ERR("HEEPO FIFO FULL");
@@ -277,7 +273,6 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
     } else if(!calibrationDone) {
         return;
     }
-    LOG_INF("gfdsgdsgds");
 
     // Allocate a new sensor data
     struct sensor_data_heepo *p_data = k_malloc(sizeof(*p_data));
@@ -285,6 +280,7 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
     if (p_data == NULL)
     {
         LOG_ERR("Failed to allocate memory for k_malloc\n");
+        while(true);
         return;
     }
 
@@ -293,7 +289,7 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
     memcpy(p_data->data, data, size);
     k_fifo_put(&heepo_fifo, p_data);
     atomic_inc(&heepo_fifo_counter);
-    LOG_INF("added to FIFO");
+    // LOG_DBG("added to FIFO");
 
     return;
 }
@@ -306,7 +302,7 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
 {
     uint32_t i = 0;
     uint32_t bufferIndex = 0;
-    uint16_t bufferSize = 0;
+    uint32_t bufferSize = 0;
     struct sensor_data_heepo *p_data = k_fifo_get(&heepo_fifo, K_FOREVER);
     uint32_t measurementSize = p_data->size;
     uint8_t *targetWriteBuffer = buffer0;
@@ -319,53 +315,65 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
     k_free(p_data);
     // and also buffer1
     memcpy(buffer1, buffer0, bufferIndex+sizeof(bufferIndex));
-
+    LOG_DBG("buffers full, starting calibration");
     while(!calibrationDone) {
         bufferSize = chunkSize*measurementSize;
         memcpy(targetWriteBuffer, &bufferSize, sizeof(bufferSize));
-        bufferReady = true;
+        // k_sleep(K_MSEC(1000));
         targetWriteBuffer = (targetWriteBuffer == buffer0) ? buffer1 : buffer0;
         k_sem_take(&HEEPO_BUSY, K_FOREVER);
-
+        LOG_DBG("heepo_busy semaphore taken");
         // first time we manually set the buffers, then after it is handled by the NRFX_SPIS_XFER_DONE interrupt
-        static bool firstTimeBuffersSet = true;
-        if(firstTimeBuffersSet) {
-            nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
-            firstTimeBuffersSet = false;
-        }
+        // static bool firstTimeBuffersSet = true;
+        // if(firstTimeBuffersSet) {
+        bufferReady = true;
+        nrfx_spis_buffers_set(&spis_inst, targetWriteBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+            // firstTimeBuffersSet = false;
+        //     LOG_DBG("buffers set for first time");
+        // }
         if(counter>1) {
             chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
+            LOG_DBG("new chunkSize calib = %d", chunkSize);
         }
         counter++;
     }
+    LOG_DBG("calib done, data_put_in_ready_counter = %d", counter);
     atomic_val_t fifo_counter;
-
+    i = 0;
     bufferSize = 0;
     targetWriteBuffer = buffer0;
+
     while(!HEEPO_stop_thread_flag) {
+        // LOG_DBG("started main loop");
         p_data = k_fifo_get(&heepo_fifo, K_FOREVER);
         atomic_dec(&heepo_fifo_counter);
-        bufferSize += p_data->size;
         memcpy(targetWriteBuffer+bufferSize+sizeof(bufferSize), p_data->data, p_data->size); 
+        bufferSize += p_data->size;
         k_free(p_data); 
         i++;
 
         if(i == chunkSize) {
+            // k_sleep(K_MSEC(1000));
+            LOG_DBG("reached chunkSize. HEEPO_BUSY sem value = %d", k_sem_count_get(&HEEPO_BUSY));
+            int32_t ret = k_sem_take(&HEEPO_BUSY, K_NO_WAIT);
+            // LOG_DBG("ret = %d, EBUSY = %d", ret, EBUSY);
             memcpy(targetWriteBuffer, &bufferSize, sizeof(bufferSize));
-            if(k_sem_take(&HEEPO_BUSY, K_NO_WAIT) == -EBUSY) {
+            if(ret == -EBUSY) {
                 k_sem_take(&HEEPO_BUSY, K_FOREVER);
                 fifo_counter = atomic_get(&heepo_fifo_counter);
-                if(((float)fifo_counter/(float)MIN_CHUNK_SIZE) > 1 ) {
-                    chunkSize = (chunkSize/2 >= MIN_CHUNK_SIZE) ? chunkSize/2 : MIN_CHUNK_SIZE;
+                LOG_DBG("had to wait for sem. fifoCounter = %d", fifo_counter);
+                if(((float)fifo_counter/(float)MIN_CHUNK_SIZE) > 1.0F ) {
+                    chunkSize = (chunkSize/2 > MIN_CHUNK_SIZE) ? chunkSize/2 : MIN_CHUNK_SIZE;
                 } else {
                     chunkSize = (chunkSize - CHUNK_STEP_SIZE > MIN_CHUNK_SIZE) ? chunkSize - CHUNK_STEP_SIZE : MIN_CHUNK_SIZE;
                 }
             } else {
+                LOG_DBG("got sem immediately");
                 chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
-
             }
             LOG_INF("new chunkSize = %d", chunkSize);
             bufferReady = true;
+            nrfx_spis_buffers_set(&spis_inst, targetWriteBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
             bufferSize = 0;
             i = 0;
             
@@ -388,13 +396,19 @@ void calculate_latency_thread_func(void *arg1, void *arg2, void *arg3) {
         startTime = k_fifo_get(&startTimeFIFO, K_FOREVER);
         k_free(startTime);
     }
+    LOG_DBG("finished first two latency measurements");
     while(!calibrationDone) {
         stopTime = k_fifo_get(&stopTimeFIFO, K_FOREVER);
         startTime = k_fifo_get(&startTimeFIFO, K_FOREVER);
         latency = stopTime->time - startTime->time;
+        // LOG_DBG("startTime = %lld, stopTime = %lld", startTime->time, stopTime->time);
+        LOG_DBG("Latency = %lld", latency);
         k_free(stopTime);
         k_free(startTime);
         if(latency > MAX_LATENCY_MS) {
+            if(bestChunkSize == MIN_CHUNK_SIZE) {
+                LOG_ERR("MIN_CHUNK_SIZE CANNOT MEET LATENCY REQUIREMENT!!");
+            }
             maxChunkSize = bestChunkSize - CHUNK_STEP_SIZE;
             LOG_INF("new maxChunkSize= %d", maxChunkSize);
             calibrationDone = true;
@@ -406,32 +420,40 @@ void calculate_latency_thread_func(void *arg1, void *arg2, void *arg3) {
         }
     }
     LOG_INF("calibration done!");
+
     k_thread_abort(k_current_get());
 }
 
 
 void handle_spi_buffers_set_thread_func(void *arg1, void *arg2, void *arg3) { // very high priority
+    LOG_DBG("starting handle_spi_buffers_set_thread_func");
+    uint32_t counter = 0;
     while(!calibrationDone) {
+        // LOG_DBG("entering first loop in handle_spi_buffers_set_thread_func");
         k_sem_take(&SPI_BUFFERS_SET, K_FOREVER);
+        // LOG_DBG("SPI_BUFFERS_SET sem taken. bufferReady = %d, intAsserted = %d", bufferReady, intAsserted);
         if(bufferReady && !intAsserted) {
-            nrf_gpio_pin_set(PIN_HEEPO_RDY);
-            LOG_INF("asserting int");
+            LOG_DBG("asserting int");
             time_item_t *startTime = k_malloc(sizeof(time_item_t));
             if(startTime == NULL) {
                 LOG_ERR("unable to allocate memory");
+            } else {
+                startTime->time = k_uptime_get();
+                k_fifo_put(&startTimeFIFO, startTime);
             }
-            startTime->time = k_uptime_get();
-            k_fifo_put(&startTimeFIFO, startTime);
+            nrf_gpio_pin_set(PIN_HEEPO_RDY);
+            counter++;
             intAsserted = true;
             bufferReady = false;
         }
     }
-
+    LOG_DBG("calib done, data_sent_counter = %d", counter);
     while(true) {
+        // LOG_DBG("started main loop");
         k_sem_take(&SPI_BUFFERS_SET, K_FOREVER);
         if(bufferReady && !intAsserted) {
             nrf_gpio_pin_set(PIN_HEEPO_RDY);
-            LOG_INF("asserting int");
+            LOG_DBG("asserting int");
             intAsserted = true;
             bufferReady = false;
         }
@@ -442,39 +464,48 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
 
     nrfx_err_t status;
     spiDataBuffer = buffer0;
-    uint16_t bufferSize;
+    uint32_t bufferSize;
+    uint32_t counter = 0;
     while(!calibrationDone) {
         k_sem_take(&HEEPO_XFER_DONE, K_FOREVER);
         switch(m_rx_buffer_slave[0]) {
             case SEND_DATA_CMD:
                 nrf_gpio_pin_clear(PIN_HEEPO_RDY); 
-                LOG_INF("deasserting int");
+                LOG_DBG("deasserting int");
                 intAsserted = false; 
                 spiDataBuffer = (spiDataBuffer == buffer0) ? buffer1 : buffer0; 
                 break;
             case RESULT_CMD:
-                // do something with result
                 time_item_t *stopTime = k_malloc(sizeof(time_item_t));
                 if(stopTime == NULL) {
                     LOG_ERR("unable to allocate memory");
+                } else {
+                    stopTime->time = k_uptime_get();
+                    k_fifo_put(&stopTimeFIFO, stopTime);
                 }
-                stopTime->time = k_uptime_get();
-
+                LOG_DBG("received result");
+                counter++;
                 k_sem_give(&HEEPO_BUSY);                    
                 break;
             default:
                 LOG_ERR("UNKNOWN COMMAND FROM HEEPO");
         }
         memcpy(&bufferSize, spiDataBuffer, sizeof(bufferSize));
-        nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+        // LOG_DBG("bufferSize set in buffers= %d", bufferSize);
+        status = nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+        LOG_DBG("status in set_spi_buffers_thread_func = %d", status);
     }
+    LOG_DBG("calib done, result_received_counter = %d", counter);
+    // status = nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
 
     while(true) {
+        LOG_DBG("started main loop");
         k_sem_take(&HEEPO_XFER_DONE, K_FOREVER);
+        LOG_DBG("taken HEEPO_XFER_DONE sem");
         switch(m_rx_buffer_slave[0]) {
             case SEND_DATA_CMD:
                 nrf_gpio_pin_clear(PIN_HEEPO_RDY); 
-                LOG_INF("deasserting int");
+                LOG_DBG("deasserting int");
                 intAsserted = false; 
                 spiDataBuffer = (spiDataBuffer == buffer0) ? buffer1 : buffer0; 
                 break;
@@ -482,7 +513,7 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
                 LOG_INF("Received Result.");
                 uint32_t i;
                 for(i=0; i<MAX_RESULT_SIZE;i++) {
-                    LOG_INF("SPIS rx buffer[%d]: 0x%02x",i, m_rx_buffer_slave[i]);
+                    LOG_DBG("SPIS rx buffer[%d]: 0x%02x",i+4, m_rx_buffer_slave[i+4]);
                 }
                 k_sem_give(&HEEPO_BUSY);                    
                 break;
@@ -492,7 +523,7 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
         memcpy(&bufferSize, spiDataBuffer, sizeof(bufferSize));
         nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
     }
-    k_thread_abort(k_current_get());
+    
 }
 
 
@@ -513,63 +544,17 @@ static void spis_handler(nrfx_spis_evt_t const * p_event, void * p_context)
     // Handle the SPIS event
     
     if (p_event->evt_type == NRFX_SPIS_XFER_DONE) {
-        
+        // LOG_DBG("NRFX_SPIS_XFER_DONE int");
+        LOG_DBG("received %d bytes", p_event->rx_amount);
         k_sem_give(&HEEPO_XFER_DONE);
-
-        
     }
     else if (p_event->evt_type == NRFX_SPIS_BUFFERS_SET_DONE)
     {
-        k_sem_give(&SPI_BUFFERS_AVAILABLE);
-        // // Set the ready pin
-        // if(bufferReady && !intAsserted) {
-        //     nrf_gpio_pin_set(PIN_HEEPO_RDY);
-        //     int64_t startTime = k_uptime_get();
-        //     intAsserted = true;
-        //     bufferReady = false;
-        // }
+        // LOG_DBG("NRFX_SPIS_BUFFERS_SET_DONE int");
+        k_sem_give(&SPI_BUFFERS_SET);
     }
     
 }
-
-/*****************************************************************************
-*****************************************************************************/
-
-// void HEEPO_thread_func(void *arg1, void *arg2, void *arg3)
-// {
-//     while (HEEPO_stop_thread_flag == false)
-//     {
-//         // Wait for the transfer to be done
-//         k_sem_take(&HEEPO_XFER_DONE, K_FOREVER);
-
-//         // check if the last transfer was a length transfer
-//         if (length_sent == false)
-//         {
-//             // Get the data from the FIFO
-//             SPI_Heep_get_fifo_wait();
-
-//             // Put the length in the buffer
-//             m_tx_buffer_slave[0] = heepo_next_meas_size;
-//             if (heepo_next_meas_size != 0)
-//             {
-//                 length_sent = true;
-//             }
-//         }
-//         else
-//         {
-//             // Put the data in the buffer
-//             memcpy(m_tx_buffer_slave, heepo_next_meas, heepo_next_meas_size);
-//             length_sent = false;
-//         }
-
-//         // Set the buffers
-//         nrfx_spis_buffers_set(&spis_inst,
-//                               m_tx_buffer_slave, sizeof(m_tx_buffer_slave),
-//                               m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
-//     }
-
-//     k_thread_abort(k_current_get());
-// }
 
 /****************************************************************************/
 /**                                                                        **/
