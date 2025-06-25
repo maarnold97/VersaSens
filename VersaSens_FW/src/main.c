@@ -39,13 +39,13 @@ int main(void)
     versa_start_led_thread();
     versa_start_mode_thread();
 
-    SPI_Heepocrates_init();
+    // SPI_Heepocrates_init();
 
     k_sleep(K_MSEC(5000));
 
-    tlp0102_set_core_res(0, false);
+    tlp0102_set_core_res(0, true);
     k_sleep(K_MSEC(1000));
-    tlp0102_set_cgra_res(0, false);
+    tlp0102_set_cgra_res(0, true);
     k_sleep(K_MSEC(1000));
 
     uint8_t data;
