@@ -137,7 +137,7 @@ static uint8_t *spiDataBuffer = NULL;
 static uint32_t chunkSize = MIN_CHUNK_SIZE;
 static uint32_t maxChunkSize = MAX_CHUNK_SIZE;
 
-static volatile bool bufferReady = false;
+static atomic_t bufferReadyCounter = ATOMIC_INIT(0);
 static volatile bool intAsserted = false;
 
 static volatile bool calibrationDone = false;
@@ -323,14 +323,15 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
         targetWriteBuffer = (targetWriteBuffer == buffer0) ? buffer1 : buffer0;
         k_sem_take(&HEEPO_BUSY, K_FOREVER);
         LOG_DBG("heepo_busy semaphore taken");
+        atomic_inc(&bufferReadyCounter);
         // first time we manually set the buffers, then after it is handled by the NRFX_SPIS_XFER_DONE interrupt
-        // static bool firstTimeBuffersSet = true;
-        // if(firstTimeBuffersSet) {
-        bufferReady = true;
+        static bool firstTimeBuffersSet = true;
+        if(firstTimeBuffersSet) {
+        // memcpy(&bufferSize, spiDataBuffer, sizeof(bufferSize));
         nrfx_spis_buffers_set(&spis_inst, targetWriteBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
-            // firstTimeBuffersSet = false;
-        //     LOG_DBG("buffers set for first time");
-        // }
+            firstTimeBuffersSet = false;
+            LOG_DBG("buffers set for first time");
+        }
         if(counter>1) {
             chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
             LOG_DBG("new chunkSize calib = %d", chunkSize);
@@ -361,7 +362,7 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
             if(ret == -EBUSY) {
                 k_sem_take(&HEEPO_BUSY, K_FOREVER);
                 fifo_counter = atomic_get(&heepo_fifo_counter);
-                LOG_DBG("had to wait for sem. fifoCounter = %d", fifo_counter);
+                LOG_DBG("had to wait for sem. fifoCounter = %ld", fifo_counter);
                 if(((float)fifo_counter/(float)MIN_CHUNK_SIZE) > 1.0F ) {
                     chunkSize = (chunkSize/2 > MIN_CHUNK_SIZE) ? chunkSize/2 : MIN_CHUNK_SIZE;
                 } else {
@@ -372,8 +373,9 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
                 chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
             }
             LOG_INF("new chunkSize = %d", chunkSize);
-            bufferReady = true;
-            nrfx_spis_buffers_set(&spis_inst, targetWriteBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
+            atomic_inc(&bufferReadyCounter);
+            // memcpy(&bufferSize, spiDataBuffer, sizeof(bufferSize));
+            // nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
             bufferSize = 0;
             i = 0;
             
@@ -432,31 +434,35 @@ void handle_spi_buffers_set_thread_func(void *arg1, void *arg2, void *arg3) { //
         // LOG_DBG("entering first loop in handle_spi_buffers_set_thread_func");
         k_sem_take(&SPI_BUFFERS_SET, K_FOREVER);
         // LOG_DBG("SPI_BUFFERS_SET sem taken. bufferReady = %d, intAsserted = %d", bufferReady, intAsserted);
-        if(bufferReady && !intAsserted) {
-            LOG_DBG("asserting int");
-            time_item_t *startTime = k_malloc(sizeof(time_item_t));
-            if(startTime == NULL) {
-                LOG_ERR("unable to allocate memory");
-            } else {
-                startTime->time = k_uptime_get();
-                k_fifo_put(&startTimeFIFO, startTime);
-            }
-            nrf_gpio_pin_set(PIN_HEEPO_RDY);
-            counter++;
-            intAsserted = true;
-            bufferReady = false;
+        while((atomic_get(&bufferReadyCounter) == 0) || intAsserted) {
+            k_sleep(K_MSEC(1));
         }
+        LOG_DBG("asserting int");
+        time_item_t *startTime = k_malloc(sizeof(time_item_t));
+        if(startTime == NULL) {
+            LOG_ERR("unable to allocate memory");
+        } else {
+            startTime->time = k_uptime_get();
+            k_fifo_put(&startTimeFIFO, startTime);
+        }
+        nrf_gpio_pin_set(PIN_HEEPO_RDY);
+        counter++;
+        intAsserted = true;
+        atomic_dec(&bufferReadyCounter);
+        
     }
     LOG_DBG("calib done, data_sent_counter = %d", counter);
     while(true) {
         // LOG_DBG("started main loop");
         k_sem_take(&SPI_BUFFERS_SET, K_FOREVER);
-        if(bufferReady && !intAsserted) {
-            nrf_gpio_pin_set(PIN_HEEPO_RDY);
-            LOG_DBG("asserting int");
-            intAsserted = true;
-            bufferReady = false;
+        while((atomic_get(&bufferReadyCounter) == 0) || intAsserted) {
+            k_sleep(K_MSEC(1));
         }
+        nrf_gpio_pin_set(PIN_HEEPO_RDY);
+        LOG_DBG("asserting int");
+        intAsserted = true;
+        bufferReadyCounter = false;
+
     }
 }
 void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very high priority
