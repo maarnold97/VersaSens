@@ -66,7 +66,8 @@
         "storage.h": "c",
         "thread_config.h": "c",
         "nrfx_spis.h": "c",
-        "kernel.h": "c"
+        "kernel.h": "c",
+        "ads1298.h": "c"
     },
     "nrf-connect.toolchain.path": "${nrf-connect.toolchain:2.5.0}",
     "nrf-connect.topdir": "${nrf-connect.sdk:2.5.0}",

@@ -70,25 +70,25 @@ Description : Original version.
 /* Maximum size of the data from the sensor */
 #define MAX_DATA_SIZE_HEEPO 65535
 
-#define MAX_BYTES_PER_MEASUREMENT 272
-#define MAX_CHUNK_SIZE 8
-#define MAX_FIFO_SIZE 10*MAX_CHUNK_SIZE
+#define MAX_BYTES_PER_MEASUREMENT 4
+#define MAX_CHUNK_SIZE 2000
+#define MAX_FIFO_SIZE 3*MAX_CHUNK_SIZE
 
 #if MAX_CHUNK_SIZE*MAX_BYTES_PER_MEASUREMENT > 65531
-    #error "MAX_CHUNK_SIZE TOO BIG! has to be smaller thank 2^16 - 4, because that is the biggest SPI transfer possible both on the nRF5340 and HEEPOCRATES"
+    #error "Tiling_Manager: MAX_CHUNK_SIZE TOO BIG! has to be smaller thank 2^16 - 4, because that is the biggest SPI transfer possible both on the nRF5340 and HEEPOCRATES"
 #endif
 
-#define MIN_CHUNK_SIZE 8
+#define MIN_CHUNK_SIZE 100
 #if MAX_CHUNK_SIZE < MIN_CHUNK_SIZE
-    #error "MAX_CHUNK_SIZE NEEDS TO BE SMALLER THAN MIN CHUNK SIZE!"
+    #error "Tiling_Manager: MAX_CHUNK_SIZE NEEDS TO BE SMALLER THAN MIN CHUNK SIZE!"
 #endif
 #define CHUNK_STEP_SIZE 1 // If you set MAX_CHUNK_SIZE equal to MIN_CHUNK_SIZE this has no effect
-#define MAX_LATENCY_MS 400 // If you set MAX_CHUNK_SIZE equal to MIN_CHUNK_SIZE this has no effect
+#define MAX_LATENCY_MS 300 // If you set MAX_CHUNK_SIZE equal to MIN_CHUNK_SIZE this has no effect
 
 #define SEND_DATA_CMD 1
 #define RESULT_CMD    2
 
-#define NBR_OF_DISCRADED_LATENCY_MEASUREMENTS 5
+#define NBR_OF_DISCRADED_LATENCY_MEASUREMENTS 2
 
 
 /* SPI Heepocrates ready signal pin */

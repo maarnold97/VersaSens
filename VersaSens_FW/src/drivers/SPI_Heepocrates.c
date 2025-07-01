@@ -52,6 +52,7 @@ Description : Original version.
 #include <nrfx_gpiote.h>
 #include "thread_config.h"
 #include "versa_config.h"
+#include "versa_time.h"
 #include "app_data.h"
 #include "versa_ble.h"
 #include "storage.h"
@@ -74,7 +75,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-LOG_MODULE_REGISTER(SPI_Heepocrates, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(SPI_Heepocrates, LOG_LEVEL_DBG);
 
 /****************************************************************************/
 /**                                                                        **/
@@ -139,7 +140,9 @@ static uint8_t buffer1[MAX_BYTES_PER_MEASUREMENT*MAX_CHUNK_SIZE + sizeof(uint32_
 static uint8_t *spiDataBuffer = NULL;
 
 static uint32_t chunkSize = MIN_CHUNK_SIZE;
-static uint32_t maxChunkSize = MAX_CHUNK_SIZE;
+// static uint32_t chunkSize = 280;
+
+static volatile uint32_t maxChunkSize = MAX_CHUNK_SIZE;
 
 static atomic_t bufferReadyCounter = ATOMIC_INIT(0);
 
@@ -231,7 +234,7 @@ void SPI_Heepocrates_init(void)
     nrf_gpio_pin_clear(PIN_HEEPO_RDY);
     nrf_gpio_cfg_output(PIN_HEEPO_RDY);
     LOG_INF("RESET HEEPO NOW");
-    k_sleep(K_MSEC(4000));
+    k_sleep(K_MSEC(10000));
 
      
     k_thread_create(&setSpiBuffersThread, setSpiBuffersThreadStack, K_THREAD_STACK_SIZEOF(setSpiBuffersThreadStack),
@@ -250,7 +253,7 @@ void SPI_Heepocrates_init(void)
                     handle_spi_buffers_set_thread_func, NULL, NULL, NULL, 2, 0, K_NO_WAIT);
     k_thread_name_set(&handleSpiBuffersSetThread, "handleSpiBuffersSetThread");
     k_thread_create(&testerThread, testerThreadStack, K_THREAD_STACK_SIZEOF(testerThreadStack),
-                    tester_thread_func, NULL, NULL, NULL, 14, 0, K_NO_WAIT);
+                    tester_thread_func, NULL, NULL, NULL, 10, 0, K_NO_WAIT);
     k_thread_name_set(&testerThread, "testerThread");
 
     LOG_DBG("heepo init");
@@ -296,6 +299,12 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size)
     // LOG_DBG("added to FIFO");
 }
 
+typedef struct{
+    int16_t header;
+    int32_t rawtime_bin;
+    int16_t time_ms_bin;
+    uint32_t chunkSize;
+} __attribute__((packed)) chunkSize_t;
 
 /*****************************************************************************
 *****************************************************************************/
@@ -309,6 +318,10 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
     uint32_t measurementSize = p_data->size;
     uint8_t *targetWriteBuffer = buffer0;
     uint32_t counter = 0;
+    uint32_t multDecCounter = 0;
+    chunkSize_t data;
+    data.header = 0xFFFF;
+    struct time_values current_time;
     atomic_dec(&heepo_fifo_counter);
     if(!calibrationDone) {
         for(i=0;i<MAX_CHUNK_SIZE;i++) { //fill entire buffer0
@@ -341,6 +354,13 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
             chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
             LOG_DBG("new chunkSize calib = %d", chunkSize);
         }
+        current_time = get_time_values();
+        uint32_t rawtime_bin = current_time.rawtime_s_bin;
+        uint16_t time_ms_bin = current_time.time_ms_bin;
+        data.rawtime_bin = rawtime_bin;
+        data.time_ms_bin = time_ms_bin;
+        data.chunkSize = chunkSize;
+        app_data_add_to_fifo(&data, sizeof(data));
         counter++;
     }
     LOG_DBG("calib done, data_put_in_ready_counter = %d", counter);
@@ -393,16 +413,27 @@ void fill_data_buffers_thread_func(void *arg1, void *arg2, void *arg3)
                 k_sem_take(&HEEPO_BUSY, K_FOREVER);
                 fifo_counter = atomic_get(&heepo_fifo_counter);
                 LOG_INF("had to wait for sem. fifoCounter = %ld", fifo_counter);
-                if(((float)fifo_counter/(float)(MIN_CHUNK_SIZE+MAX_CHUNK_SIZE)/2) > 1.0F ) {
+
+                if((fifo_counter > (MIN_CHUNK_SIZE+maxChunkSize)/2) && multDecCounter == 0)  {
                     chunkSize = (chunkSize/2 > MIN_CHUNK_SIZE) ? chunkSize/2 : MIN_CHUNK_SIZE;
+                    multDecCounter+=2; // prevents too many successive halfings
                 } else {
                     chunkSize = (chunkSize - CHUNK_STEP_SIZE > MIN_CHUNK_SIZE) ? chunkSize - CHUNK_STEP_SIZE : MIN_CHUNK_SIZE;
+                    if(multDecCounter>0) multDecCounter--;
                 }
             } else {
                 LOG_DBG("got sem immediately");
                 chunkSize = (chunkSize + CHUNK_STEP_SIZE < maxChunkSize) ? chunkSize + CHUNK_STEP_SIZE : maxChunkSize;
+                if(multDecCounter>0) multDecCounter--;
             }
             LOG_INF("new chunkSize = %d", chunkSize);
+            current_time = get_time_values();
+            uint32_t rawtime_bin = current_time.rawtime_s_bin;
+            uint16_t time_ms_bin = current_time.time_ms_bin;
+            data.rawtime_bin = rawtime_bin;
+            data.time_ms_bin = time_ms_bin;
+            data.chunkSize = chunkSize;
+            app_data_add_to_fifo(&data, sizeof(data));
             atomic_inc(&bufferReadyCounter);
             // memcpy(&bufferSize, spiDataBuffer, sizeof(bufferSize));
             // nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
@@ -421,6 +452,7 @@ void calculate_latency_thread_func(void *arg1, void *arg2, void *arg3) {
     time_item_t *stopTime;
     int64_t latency = 0;
     uint32_t bestChunkSize = MIN_CHUNK_SIZE;
+    // uint32_t bestChunkSize = 280;
     uint32_t i;
     if(calibrationDone) { // if calibrationDone is initialized to true, it's because MAX_CHUNK_SIZE = MIN_CHUNK_SIZE, and there is no need to calibrate the chunkSize
         k_thread_abort(k_current_get());
@@ -539,7 +571,7 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
     // status = nrfx_spis_buffers_set(&spis_inst, spiDataBuffer, (size_t) (bufferSize+sizeof(bufferSize)), m_rx_buffer_slave, sizeof(m_rx_buffer_slave));
 
     while(true) {
-        LOG_DBG("started main loop");
+        // LOG_DBG("started main loop");
         k_sem_take(&HEEPO_XFER_DONE, K_FOREVER);
         LOG_DBG("taken HEEPO_XFER_DONE sem");
         switch(m_rx_buffer_slave[0]) {
@@ -555,11 +587,11 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
                 // for(i=0; i<MAX_RESULT_SIZE;i++) {
                 //     LOG_DBG("SPIS rx buffer[%d]: 0x%02x",i+4, m_rx_buffer_slave[i+4]);
                 // }
-                float result = m_rx_buffer_slave[4] | (m_rx_buffer_slave[5]<<8)  | (m_rx_buffer_slave[6]<<16) | (m_rx_buffer_slave[7]<<24);
-                LOG_INF("result as float = %.8f", result);
+                // float result = m_rx_buffer_slave[4] | (m_rx_buffer_slave[5]<<8)  | (m_rx_buffer_slave[6]<<16) | (m_rx_buffer_slave[7]<<24);
+                // LOG_INF("result as float = %.8f", result);
                 // LOG_INF("adding to fifo, resultSize = %d", resultSize);
                 storage_add_to_fifo(m_rx_buffer_slave+4, resultSize - 4); // resultSize - 4 because the first 4 bytes are the RESULT_CMD
-                ble_add_to_fifo(m_rx_buffer_slave+4, resultSize - 4);
+                // ble_add_to_fifo(m_rx_buffer_slave+4, resultSize - 4);
                 if(VCONF_TILING_APPDATA) {
                     app_data_add_to_fifo(m_rx_buffer_slave+4, resultSize - 4);
                 }
@@ -573,32 +605,63 @@ void set_spi_buffers_thread_func(void *arg1, void *arg2, void *arg3) // very hig
     }
     
 }
+typedef struct {
+    int16_t header;
+    int32_t rawtime_bin;
+    int16_t time_ms_bin;
+    uint32_t freq;
+} __attribute__((packed)) freq_t;
 
 void tester_thread_func(void *arg1, void *arg2, void *arg3) {
 
-    // uint32_t val = 0;
-    // SPI_Heep_add_fifo(&val, sizeof(uint32_t));
-    // while(!calibrationDone) {
-    //     k_sleep(K_MSEC(10));
-    // }
+    uint32_t val = 0;
+    SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+    LOG_INF("adding to fifo first time");
+    while(!calibrationDone) {
+        k_sleep(K_MSEC(10));
+    }
+
+    uint32_t i;
+    freq_t data;
+    data.header = 0xBBBB;
+    struct time_values current_time;
 
     while (1)
     {
-        // val++;
-        // SPI_Heep_add_fifo(&val, sizeof(uint32_t));
-        // if(val<400) {
-        //     k_sleep(K_MSEC(20));
-        // } else if(val < 600) {
-        //     k_sleep(K_MSEC(10));
-        // } else if(val < 2000) {
-        //     k_sleep(K_MSEC(1));
-        // } else if(val < 5000) {
-        //     k_sleep(K_MSEC(10));
-        // }
-        // if(val==400 ||val == 600 || val == 1000 || val == 2000 || val == 5000) {
-        //     LOG_INF("val = %d", val);
-        // } 
-        k_sleep(K_MSEC(10000));
+        val++;
+        
+        if(val<5000) {
+            SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+
+            k_sleep(K_MSEC(1));
+        } else if(val < 5200) {
+            for(i = 0; i<9; i++) {
+                SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+            }
+            k_sleep(K_MSEC(1));
+        } else if(val < 10000) {
+            SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+
+            k_sleep(K_MSEC(1));
+        } else if(val < 13000) {
+            SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+            SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+            SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+            k_sleep(K_MSEC(1));
+        } else if(val < 30000) {
+            SPI_Heep_add_fifo(&val, sizeof(uint32_t));
+            k_sleep(K_MSEC(1));
+        }
+        if(val == 1 ||val==5000 || val == 5200 || val == 10000 || val == 13000) {
+            LOG_ERR("val = %d", val);
+            current_time = get_time_values();
+            uint32_t rawtime_bin = current_time.rawtime_s_bin;
+            uint16_t time_ms_bin = current_time.time_ms_bin;
+            data.rawtime_bin = rawtime_bin;
+            data.time_ms_bin = time_ms_bin;
+            data.freq = val;
+            app_data_add_to_fifo(&data, sizeof(data));
+        } 
     }
 }
 

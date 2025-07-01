@@ -387,7 +387,7 @@ int versa_sensor_start(void)
     nrf_gpio_pin_set(START_PIN);
 
     // Set the start time of the measurements
-    sync_time();
+    // sync_time();
 
     k_sleep(K_MSEC(10));
 

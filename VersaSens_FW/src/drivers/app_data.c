@@ -58,7 +58,7 @@ Description : Original version.
 
 LOG_MODULE_REGISTER(app_data, LOG_LEVEL_INF);
 
-#define APP_DATA_FIFO_MAX_SIZE 10
+#define APP_DATA_FIFO_MAX_SIZE 1000
 
 /****************************************************************************/
 /**                                                                        **/

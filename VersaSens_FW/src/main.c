@@ -57,5 +57,26 @@ int main(void)
     versa_start_led_thread();
     versa_start_mode_thread();
 
+    while(true) {
+        struct app_data_struct *data = k_malloc(sizeof(*data));
+        if (data == NULL)
+        {
+            LOG_ERR("Failed to allocate memory for new_data\n");
+        }
+        else
+        {
+            app_data_get_from_fifo(data);
+        }
+        
+        if (data != NULL)
+        {
+            uint8_t* ble_data = data->data;
+            uint32_t size = data->size;
+            k_free(data);
+            ble_add_to_fifo(ble_data, size);
+            k_sleep(K_MSEC(60));
+        }
+    }
+
     
 }

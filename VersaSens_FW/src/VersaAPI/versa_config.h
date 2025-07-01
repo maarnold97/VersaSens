@@ -85,7 +85,7 @@ Description : Original version.
 /***********************      CONFIGURATIONS      ***************************/
 
 /* Enable/Disable sensors */
-#define VCONF_ADS1298_EN        1
+#define VCONF_ADS1298_EN        0
 #define VCONF_BNO086_EN         0
 #define VCONF_MAX30001_EN       0
 #define VCONF_MAX86178_EN       0
@@ -94,7 +94,7 @@ Description : Original version.
 #define VCONF_MAX77658_EN       1
 
 /* Heepo module configuration */
-#define VCONF_ADS1298_HEEPO     1
+#define VCONF_ADS1298_HEEPO     0
 #define VCONF_MAX30001_HEEPO    0
 #define VCONF_MAX86178_HEEPO    0
 #define VCONF_MLX90632_HEEPO    0
