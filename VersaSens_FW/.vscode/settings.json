@@ -64,7 +64,9 @@
         "spim_inst.h": "c",
         "app_data.h": "c",
         "storage.h": "c",
-        "thread_config.h": "c"
+        "thread_config.h": "c",
+        "nrfx_spis.h": "c",
+        "kernel.h": "c"
     },
     "nrf-connect.toolchain.path": "${nrf-connect.toolchain:2.5.0}",
     "nrf-connect.topdir": "${nrf-connect.sdk:2.5.0}",

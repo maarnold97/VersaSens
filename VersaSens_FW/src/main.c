@@ -25,7 +25,8 @@
 #include <zephyr/drivers/led.h>
 
 
-LOG_MODULE_REGISTER(main, LOG_LEVEL_MAIN);
+// LOG_MODULE_REGISTER(main, LOG_LEVEL_MAIN);
+LOG_MODULE_REGISTER(main,LOG_LEVEL_INF);
 
 #define LED_PWM_NODE_ID	 DT_COMPAT_GET_ANY_STATUS_OKAY(pwm_leds)
 int main(void)
@@ -57,17 +58,4 @@ int main(void)
     versa_start_mode_thread();
 
     
-
-
-    uint32_t val = 0;
-    SPI_Heep_add_fifo(&val, sizeof(uint32_t));
-    k_sleep(K_MSEC(5000));
-
-    while (1)
-    {
-        val++;
-        SPI_Heep_add_fifo(&val, sizeof(uint32_t));
-        k_sleep(K_MSEC(40));
-
-    }
 }

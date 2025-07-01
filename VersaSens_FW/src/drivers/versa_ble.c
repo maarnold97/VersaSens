@@ -66,7 +66,7 @@ Description : Original version.
 #include <nrfx_gpiote.h>
 #include "versa_config.h"
 
-LOG_MODULE_REGISTER(versa_ble, LOG_LEVEL_BLE);
+LOG_MODULE_REGISTER(versa_ble, LOG_LEVEL_INF);
 
 /****************************************************************************/
 /**                                                                        **/

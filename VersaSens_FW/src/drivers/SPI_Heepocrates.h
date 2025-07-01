@@ -70,20 +70,25 @@ Description : Original version.
 /* Maximum size of the data from the sensor */
 #define MAX_DATA_SIZE_HEEPO 65535
 
-#define MAX_BYTES_PER_MEASUREMENT 4
-#define MAX_CHUNK_SIZE 1000
-#define MAX_FIFO_SIZE MAX_CHUNK_SIZE
+#define MAX_BYTES_PER_MEASUREMENT 272
+#define MAX_CHUNK_SIZE 8
+#define MAX_FIFO_SIZE 10*MAX_CHUNK_SIZE
 
 #if MAX_CHUNK_SIZE*MAX_BYTES_PER_MEASUREMENT > 65531
     #error "MAX_CHUNK_SIZE TOO BIG! has to be smaller thank 2^16 - 4, because that is the biggest SPI transfer possible both on the nRF5340 and HEEPOCRATES"
 #endif
 
-#define MIN_CHUNK_SIZE 50
-#define CHUNK_STEP_SIZE 1
-#define MAX_LATENCY_MS 800
+#define MIN_CHUNK_SIZE 8
+#if MAX_CHUNK_SIZE < MIN_CHUNK_SIZE
+    #error "MAX_CHUNK_SIZE NEEDS TO BE SMALLER THAN MIN CHUNK SIZE!"
+#endif
+#define CHUNK_STEP_SIZE 1 // If you set MAX_CHUNK_SIZE equal to MIN_CHUNK_SIZE this has no effect
+#define MAX_LATENCY_MS 400 // If you set MAX_CHUNK_SIZE equal to MIN_CHUNK_SIZE this has no effect
 
 #define SEND_DATA_CMD 1
 #define RESULT_CMD    2
+
+#define NBR_OF_DISCRADED_LATENCY_MEASUREMENTS 5
 
 
 /* SPI Heepocrates ready signal pin */
@@ -97,11 +102,6 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-struct sensor_data_heepo {
-	void *fifo_reserved;  // reserved for use by k_fifo
-	uint8_t data[MAX_BYTES_PER_MEASUREMENT];  // sensor data
-	size_t size;  // size of the data
-};
 
 typedef struct {
     int16_t header;
@@ -110,7 +110,6 @@ typedef struct {
     int8_t len;
     uint8_t index;
     uint8_t data[MAX_RESULT_SIZE];
-	uint8_t size;
 } __attribute__((packed)) HEEPO_result_t;
 
 /****************************************************************************/
@@ -136,31 +135,6 @@ void SPI_Heepocrates_init(void);
 *****************************************************************************/
 
 /**
- * @brief This function starts a SPI transaction
- * 
- * @param p_tx_buffer : pointer to the buffer to transmit
- * @param length_tx : length of the buffer to transmit
- * @param p_rx_buffer : pointer to the buffer to receive
- * @param length_rx : length of the buffer to receive
- * 
- * @retval None
- */
-void SPI_Heepocrates_start(uint8_t * p_tx_buffer, uint16_t length_tx, uint8_t * p_rx_buffer, uint16_t length_rx);
-
-/*****************************************************************************
-*****************************************************************************/
-
-/**
- * @brief This function gets the data from the FIFO
- * 
- * @retval None
- */
-void SPI_Heep_get_fifo();
-
-/*****************************************************************************
-*****************************************************************************/
-
-/**
  * @brief This function adds the data to the FIFO
  * 
  * @param data : pointer to the data
@@ -170,6 +144,9 @@ void SPI_Heep_get_fifo();
  */
 void SPI_Heep_add_fifo(uint8_t *data, size_t size);
 
+
+bool get_calibration_done(void);
+
 /****************************************************************************/
 /**                                                                        **/
 /**                          INLINE FUNCTIONS                              **/
@@ -178,7 +155,7 @@ void SPI_Heep_add_fifo(uint8_t *data, size_t size);
 
 
 
-#endif /* _SPI_HEEPOCRATES_H */
+#endif /* _SPI_HEEPOCRATES_H   */
 /****************************************************************************/
 /**                                                                        **/
 /**                                EOF                                     **/

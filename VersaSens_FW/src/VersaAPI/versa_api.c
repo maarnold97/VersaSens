@@ -68,6 +68,7 @@ Description : Original version.
 #include "MAX86178.h"
 #include "sensors_list.h"
 #include "versa_time.h"
+#include "SPI_Heepocrates.h"
 
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/disk_access.h>
@@ -193,8 +194,8 @@ int versa_init(void)
     k_sleep(K_MSEC(100));
 
     int ret;
-    k_sleep(K_MSEC(5000));
-    SPI_Heepocrates_init();
+
+    
     
 
     // Initialize the BLE
@@ -206,6 +207,7 @@ int versa_init(void)
     // Initialize the storage
     storage_init();
     k_sleep(K_MSEC(500));
+    SPI_Heepocrates_init();
 
     // Set the start pin to output low
     nrf_gpio_cfg_output(START_PIN);

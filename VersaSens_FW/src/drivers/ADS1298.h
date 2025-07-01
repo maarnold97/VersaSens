@@ -112,7 +112,7 @@ Description : Original version.
 #define RDATA_CMD               0x12
 
 /*! ADS1298 SPI settings */
-#define ADS1298_CONSEC_MEAS     7
+#define ADS1298_CONSEC_MEAS     8
 
 /*! ADS1298 Registers Default Values*/
 #define ADS1298_CH_SET_EEG      0x60
