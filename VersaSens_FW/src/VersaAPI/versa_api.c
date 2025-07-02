@@ -126,6 +126,10 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3);
 */
 void new_module_thread_func(void *arg1, void *arg2, void *arg3);
 
+void LED_handler_thread_func(void *arg1, void *arg2, void *arg3);
+
+void button_isr_handler_thread_func(void *arg1, void *arg2, void *arg3);
+
 /****************************************************************************/
 /**                                                                        **/
 /*                           EXPORTED VARIABLES                             */
@@ -158,6 +162,9 @@ int vconf_max30001_mode = VCONF_MAX30001_MODE;
 K_THREAD_STACK_DEFINE(LED_thread_stack, 256);
 struct k_thread LED_thread;
 
+K_THREAD_STACK_DEFINE(LED_handler_thread_stack, 256);
+struct k_thread LED_handler_thread;
+
 /*! Mode thread stack and instance */
 K_THREAD_STACK_DEFINE(mode_thread_stack, 2048);
 struct k_thread mode_thread;
@@ -166,8 +173,11 @@ struct k_thread mode_thread;
 K_THREAD_STACK_DEFINE(new_module_thread_stack, 2048);
 struct k_thread new_module_thread;
 
+K_THREAD_STACK_DEFINE(button_isr_handler_thread_stack, 1024);
+struct k_thread button_isr_handler_thread;
+
 // Mode of the device
-int mode = MODE_IDLE;
+uint32_t mode = MODE_IDLE;
 // Mutex to handle mode modification
 K_MUTEX_DEFINE(mode_mutex);
 
@@ -175,6 +185,15 @@ K_MUTEX_DEFINE(mode_mutex);
 bool sensor_started = false;
 bool new_module_thread_stop = false;
 bool auto_disconnect = false;
+
+K_SEM_DEFINE(BUTTON,0,1);
+
+K_EVENT_DEFINE(SHORT_PRESS);
+K_EVENT_DEFINE(LONG_PRESS); // more than 2 seconds
+K_EVENT_DEFINE(MODE);
+K_EVENT_DEFINE(LED);
+
+K_MSGQ_DEFINE(led_msgq, sizeof(led_cmd_t), 10, 4); // 10 messages, 4-byte aligned
 
 /****************************************************************************/
 /**                                                                        **/
@@ -539,9 +558,71 @@ int versa_start_led_thread(void)
 /****************************************************************************/
 /****************************************************************************/
 
+void button_interrupt_handler(nrfx_gpiote_pin_t pin, nrfx_gpiote_trigger_t trigger, void *context)
+{
+    k_sem_give(&BUTTON);
+}
+
+button_isr_handler_thread_func(void *arg1, void *arg2, void *arg3) {
+    uint32_t counter = 0;
+    while(true) {
+        k_sem_take(&BUTTON, K_FOREVER);
+        k_sleep(K_MSEC(100)); // debounce time
+        while(nrf_gpio_pin_read(MODE_BTN_N) != 0) {
+            counter++;
+            k_sleep(K_MSEC(100));
+        }
+        if(counter > 19) {
+            k_event_set(&LONG_PRESS, 1);
+        } else if(counter>0) {
+            k_event_set(&SHORT_PRESS, 1);
+        }
+        counter = 0;
+    }
+}
+
 int versa_start_mode_thread(void)
 {
+    // Initialize the GPIOTE driver
+    nrfx_err_t err;
+    if(!nrfx_gpiote_is_init())
+    {
+        err = nrfx_gpiote_init(0);
+        if (err != NRFX_SUCCESS)
+        {
+            LOG_ERR("nrfx_gpiote_init failed with error code: %d\n", err);
+            return err;
+        }
+    }
+
+    // Allocate a GPIOTE channel
+    uint8_t button_channel;
+    err = nrfx_gpiote_channel_alloc(&button_channel);
+    if (err != NRFX_SUCCESS)
+    {
+        LOG_ERR("nrfx_gpiote_channel_alloc failed with error code: %d\n", err);
+        return err;
+    }
+        // Configure the GPIOTE channel
+    static const nrfx_gpiote_input_config_t input_config = NRFX_GPIOTE_DEFAULT_INPUT_CONFIG;
+
+	const nrfx_gpiote_trigger_config_t trigger_config = {
+		.trigger = NRFX_GPIOTE_TRIGGER_HITOLO,
+		.p_in_channel = &button_channel,
+	};
+	static const nrfx_gpiote_handler_config_t handler_config = {
+		.handler = button_interrupt_handler,
+	};
+
+    err = nrfx_gpiote_input_configure(MODE_BTN_N,
+									  &input_config,
+									  &trigger_config,
+									  &handler_config);
+
     // Start the mode thread
+    k_tid_t button_isr_handler_id = k_thread_create(&button_isr_handler_thread, button_isr_handler_thread_stack, K_THREAD_STACK_SIZEOF(button_isr_handler_thread_stack),
+                                             button_isr_handler_thread_func, NULL, NULL, NULL, 1, 0, K_NO_WAIT);
+    k_thread_name_set(button_isr_handler_id, "Button ISR handler Thread");
     k_tid_t mode_thread_id = k_thread_create(&mode_thread, mode_thread_stack, K_THREAD_STACK_SIZEOF(mode_thread_stack),
                                              mode_thread_func, NULL, NULL, NULL, 1, 0, K_NO_WAIT);
     k_thread_name_set(mode_thread_id, "Mode Thread");
@@ -552,18 +633,19 @@ int versa_start_mode_thread(void)
 /****************************************************************************/
 /****************************************************************************/
 
-void versa_set_mode(int new_mode)
+void versa_set_mode(uint32_t new_mode)
 {
     // Set the current mode
-    k_mutex_lock(&mode_mutex, K_FOREVER);
-    mode = new_mode;
-    k_mutex_unlock(&mode_mutex);
+    // k_mutex_lock(&mode_mutex, K_FOREVER);
+    // mode = new_mode;
+    // k_mutex_unlock(&mode_mutex);
+    k_event_set(&MODE, new_mode);
 }
 
 /****************************************************************************/
 /****************************************************************************/
 
-int versa_get_mode(void)
+uint32_t versa_get_mode(void)
 {
     // Get the current mode
     k_mutex_lock(&mode_mutex, K_FOREVER);
@@ -578,6 +660,12 @@ int versa_get_mode(void)
 /**                                                                        **/
 /****************************************************************************/
 
+enum LEDS {
+    RED = 0x01,
+    YELLOW = 0x02,
+    GREEN = 0x04
+};
+
 void LED_thread_func(void *arg1, void *arg2, void *arg3)
 {
     // Set the LED pins to output
@@ -589,61 +677,152 @@ void LED_thread_func(void *arg1, void *arg2, void *arg3)
 
     nrf_gpio_cfg_output(YELLOW_LED);
     nrf_gpio_pin_clear(YELLOW_LED);
-    k_sleep(K_MSEC(5000));
+    k_sleep(K_MSEC(2000));
 
+    nrf_gpio_pin_set(GREEN_LED);
+    nrf_gpio_pin_set(RED_LED);
+    nrf_gpio_pin_set(YELLOW_LED);
+
+    uint32_t led_event;
+
+
+    k_tid_t Led_handler_thread_id; 
+    k_thread_name_set(Led_handler_thread_id, "LED Thread");
+
+    uint32_t toggling_period_ms;
+    uint32_t abort_cycles;
+    uint32_t leds;
     // Update the LED status depending on the mode and events
-    while (1)
-    {
-        if (get_temperature_high())
-        {
-            nrf_gpio_pin_set(GREEN_LED);
-            nrf_gpio_pin_clear(RED_LED);
-            nrf_gpio_pin_set(YELLOW_LED);
+    while(true) {
+        led_event = k_event_wait(&LED, 0xFFFFFFFF, true, K_FOREVER);
+        k_thread_abort(Led_handler_thread_id);
+        nrf_gpio_pin_set(GREEN_LED);
+        nrf_gpio_pin_set(RED_LED);
+        nrf_gpio_pin_set(YELLOW_LED);
+        switch(led_event) {
+            case MODE_STREAM_SELECT:
+                abort_cycles = 1000;
+                toggling_period_ms = 250;
+                leds = YELLOW;
+                Led_handler_thread_id = k_thread_create(&LED_handler_thread, LED_handler_thread_stack, K_THREAD_STACK_SIZEOF(LED_handler_thread_stack),
+                                           LED_handler_thread_func, &abort_cycles, &toggling_period_ms, &leds, 14, 0, K_NO_WAIT);
+                break;                       
+            case MODE_STORE_SELECT:
+                abort_cycles = 1000;
+                toggling_period_ms = 250;
+                leds = RED;
+                Led_handler_thread_id = k_thread_create(&LED_handler_thread, LED_handler_thread_stack, K_THREAD_STACK_SIZEOF(LED_handler_thread_stack),
+                LED_handler_thread_func, &abort_cycles, &toggling_period_ms, &leds, 14, 0, K_NO_WAIT);
+                break;
+            case MODE_IDLE_SELECT:
+                abort_cycles = 1000;
+                toggling_period_ms = 250;
+                leds = GREEN;
+                Led_handler_thread_id = k_thread_create(&LED_handler_thread, LED_handler_thread_stack, K_THREAD_STACK_SIZEOF(LED_handler_thread_stack),
+                                           LED_handler_thread_func, &abort_cycles, &toggling_period_ms, &leds, 14, 0, K_NO_WAIT);
+                break;
+            case MODE_STREAM:
+                abort_cycles = 10;
+                toggling_period_ms = 500;
+                leds = RED;
+                Led_handler_thread_id = k_thread_create(&LED_handler_thread, LED_handler_thread_stack, K_THREAD_STACK_SIZEOF(LED_handler_thread_stack),
+                                           LED_handler_thread_func, &abort_cycles, &toggling_period_ms, &leds, 14, 0, K_NO_WAIT);
+                break;
+            case MODE_STORE:
+                abort_cycles = 10;
+                toggling_period_ms = 500;
+                leds = YELLOW;
+                Led_handler_thread_id = k_thread_create(&LED_handler_thread, LED_handler_thread_stack, K_THREAD_STACK_SIZEOF(LED_handler_thread_stack),
+                                           LED_handler_thread_func, &abort_cycles, &toggling_period_ms, &leds, 14, 0, K_NO_WAIT);
+                break;
+            case MODE_IDLE: 
+                abort_cycles = 5000;
+                toggling_period_ms = 500;
+                leds = GREEN;
+                Led_handler_thread_id = k_thread_create(&LED_handler_thread, LED_handler_thread_stack, K_THREAD_STACK_SIZEOF(LED_handler_thread_stack),
+                                           LED_handler_thread_func, &abort_cycles, &toggling_period_ms, &leds, 14, 0, K_NO_WAIT);
+                break;
         }
-        else if (get_write_failed())
-        {
-            nrf_gpio_pin_set(GREEN_LED);
-            nrf_gpio_pin_set(RED_LED);
-            nrf_gpio_pin_set(YELLOW_LED);
-        }
-        else if (versa_get_mode() == MODE_STORE)
-        {
-            nrf_gpio_pin_set(GREEN_LED);
-            nrf_gpio_pin_toggle(RED_LED);
-            nrf_gpio_pin_set(YELLOW_LED);
-        }
-        else if (versa_get_mode() == MODE_STREAM)
-        {
-            nrf_gpio_pin_set(GREEN_LED);
-            nrf_gpio_pin_set(RED_LED);
-            nrf_gpio_pin_toggle(YELLOW_LED);
-        }
-        else if (get_battery_charging())
-        {
-            nrf_gpio_pin_toggle(GREEN_LED);
-            nrf_gpio_pin_set(RED_LED);
-            nrf_gpio_pin_set(YELLOW_LED);
-        }
-        else if (get_battery_low())
-        {
-            nrf_gpio_pin_set(GREEN_LED);
-            nrf_gpio_pin_set(RED_LED);
-            nrf_gpio_pin_clear(YELLOW_LED);
-        }
-        else if (versa_get_mode() == MODE_IDLE)
-        {
-            nrf_gpio_pin_clear(GREEN_LED);
-            nrf_gpio_pin_set(RED_LED);
-            nrf_gpio_pin_set(YELLOW_LED);
-        }
+        // if (get_temperature_high())
+        // {
+        //     nrf_gpio_pin_set(GREEN_LED);
+        //     nrf_gpio_pin_clear(RED_LED);
+        //     nrf_gpio_pin_set(YELLOW_LED);
+        // }
+        // else if (get_write_failed())
+        // {
+        //     nrf_gpio_pin_set(GREEN_LED);
+        //     nrf_gpio_pin_set(RED_LED);
+        //     nrf_gpio_pin_set(YELLOW_LED);
+        // }
+        // else if (versa_get_mode() == MODE_STORE)
+        // {
+        //     nrf_gpio_pin_set(GREEN_LED);
+        //     nrf_gpio_pin_toggle(RED_LED);
+        //     nrf_gpio_pin_set(YELLOW_LED);
+        // }
+        // else if (versa_get_mode() == MODE_STREAM)
+        // {
+        //     nrf_gpio_pin_set(GREEN_LED);
+        //     nrf_gpio_pin_set(RED_LED);
+        //     nrf_gpio_pin_toggle(YELLOW_LED);
+        // }
+        // else if (get_battery_charging())
+        // {
+        //     nrf_gpio_pin_toggle(GREEN_LED);
+        //     nrf_gpio_pin_set(RED_LED);
+        //     nrf_gpio_pin_set(YELLOW_LED);
+        // }
+        // else if (get_battery_low())
+        // {
+        //     nrf_gpio_pin_set(GREEN_LED);
+        //     nrf_gpio_pin_set(RED_LED);
+        //     nrf_gpio_pin_clear(YELLOW_LED);
+        // }
+        // else if (versa_get_mode() == MODE_IDLE)
+        // {
+        //     nrf_gpio_pin_clear(GREEN_LED);
+        //     nrf_gpio_pin_set(RED_LED);
+        //     nrf_gpio_pin_set(YELLOW_LED);
+        // }
 
 
-        k_sleep(K_MSEC(500));
+        // k_sleep(K_MSEC(500));
     }
+}
+
+void LED_handler_thread_func(void *arg1, void *arg2, void *arg3) {
+    uint32_t abort_cycles = *(uint32_t*)arg1;
+    uint32_t period_ms = *(uint32_t*)arg2;
+    uint32_t leds = *(uint32_t*)arg3;
+
+    do {
+        if(leds & RED) nrf_gpio_pin_toggle(RED_LED);
+        if(leds & YELLOW) nrf_gpio_pin_toggle(YELLOW_LED);
+        if(leds & GREEN) nrf_gpio_pin_toggle(GREEN_LED);
+        k_sleep(K_MSEC(period_ms));
+        abort_cycles--;
+    } while(abort_cycles > 0);
+
 }
 
 /****************************************************************************/
 /****************************************************************************/
+
+void button_mode_select_thread_func(void *arg1, void *arg2, void *arg3) {
+    uint32_t mode = MODE_IDLE;
+    while(true){
+        k_event_wait(&LONG_PRESS, 1, true, K_FOREVER);
+
+
+        while(k_event_wait(&SHORT_PRESS, 1, true, K_MSEC(3000)) != 0) {
+            mode<<1;
+            if(mode > MODE_STREAM) mode = MODE_IDLE;
+            k_event_set(&LED, (mode <<3));
+        }
+        versa_set_mode(mode);
+    }
+}
 
 void mode_thread_func(void *arg1, void *arg2, void *arg3)
 {
@@ -652,14 +831,55 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3)
     // nrf_gpio_cfg_input(MODE_STORE_PIN, GPIO_PIN_CNF_PULL_Pulldown);
     // nrf_gpio_cfg_input(MODE_STREAM_PIN, GPIO_PIN_CNF_PULL_Pulldown);
 
-    versa_set_mode(MODE_STREAM);
-    set_status(BLE_STATUS_STREAM);
-    enable_stream_data();
-    versa_sensor_start();
+    // versa_set_mode(MODE_STREAM);
+    // set_status(BLE_STATUS_STREAM);
+    // enable_stream_data();
+    // versa_sensor_start();
+
+    uint32_t mode;
+    while(true) {
+        mode = k_event_wait_all(&MODE, MODE_IDLE | MODE_STORE | MODE_STREAM, true, K_FOREVER);
+        switch(mode) {
+            case MODE_STORE:
+                // Stop the data stream from the BLE
+                disable_stream_data();
+                // Start the sensor continuous read
+                if(!sensor_started)
+                {
+                    sensor_started = true;
+                    versa_sensor_start();
+                }
+                // Update mode and status
+                set_status(BLE_STATUS_STORE);
+                break;
+            case MODE_STREAM:
+                // Start the data stream from the BLE
+                enable_stream_data();
+                // Start the sensor continuous read
+                if(!sensor_started)
+                {
+                    sensor_started = true;
+                    versa_sensor_start();
+                }
+                // Update mode and status
+                set_status(BLE_STATUS_STREAM);
+                break;
+            default: //if multiple modes are set at the same time through BLE and the button, we just go to idle
+                // Stop the data stream from the BLE
+                disable_stream_data();
+                // Stop the sensor continuous read
+                if(sensor_started)
+                {
+                    sensor_started = false;
+                    versa_sensor_stop();
+                }
+                // Update mode and status
+                versa_set_mode(MODE_IDLE);
+                set_status(BLE_STATUS_IDLE);
+        }
+    }
 
 
-    while (1)
-    {
     //     // Update the mode according to the switch, BLE command and BLE overwrite
     //     if (((nrf_gpio_pin_read(MODE_IDLE_PIN) > 0 | (nrf_gpio_pin_read(MODE_STORE_PIN)==0 & 
     //           nrf_gpio_pin_read(MODE_STREAM_PIN)==0)) & !BLE_overwrite) | (BLE_overwrite & BLE_cmd == BLE_CMD_MODE_IDLE))
@@ -709,8 +929,8 @@ void mode_thread_func(void *arg1, void *arg2, void *arg3)
     //         set_status(BLE_STATUS_STREAM);
     //     }
 
-        k_sleep(K_MSEC(200));
-    }
+    //     k_sleep(K_MSEC(200));
+    // }
 }
 
 /****************************************************************************/

@@ -64,6 +64,7 @@ Description : Original version.
 #include "versa_ble.h"
 #include "thread_config.h"
 #include <nrfx_gpiote.h>
+#include "versa_api.h"
 
 LOG_MODULE_REGISTER(versa_ble, LOG_LEVEL_INF);
 
@@ -508,6 +509,9 @@ static ssize_t write_cmd(struct bt_conn *conn, const struct bt_gatt_attr *attr,
 	{
 		// Update the BLE command
 		BLE_cmd = value;
+		if(BLE_overwrite) {
+			versa_set_mode(BLE_cmd);
+		}
 	}
 
 	// send indication to the client

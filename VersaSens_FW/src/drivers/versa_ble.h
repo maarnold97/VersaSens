@@ -75,7 +75,7 @@ Description : Original version.
 #define BLE_CMD_STOP_OW     0x09
 #define BLE_CMD_MODE_IDLE   0x01
 #define BLE_CMD_MODE_STORE  0x02
-#define BLE_CMD_MODE_STREAM 0x03
+#define BLE_CMD_MODE_STREAM 0x04
 
 // BLE status
 #define BLE_STATUS_IDLE     0x01

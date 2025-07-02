@@ -68,9 +68,24 @@ Description : Original version.
 #define MODE_STREAM_PIN 41
 
 /*! Modes */
-#define MODE_IDLE   0
-#define MODE_STORE  1
-#define MODE_STREAM 2
+#define MODE_IDLE   0x01
+#define MODE_STORE  0x02
+#define MODE_STREAM 0x04
+#define MODE_IDLE_SELECT 0x08
+#define MODE_STORE_SELECT 0x10
+#define MODE_STREAM_SELECT 0x20
+
+typedef enum {
+    LED_CMD_SET_MODE_INDICATOR,
+    LED_CMD_TOGGLE_MODE,
+    LED_CMD_EXIT_MODE_SELECT,
+    LED_CMD_SYSTEM_STATUS, // for non-mode LED behavior
+} led_cmd_type_t;
+
+typedef struct {
+    led_cmd_type_t cmd;
+    uint32_t mode;      // 0 = idle, 1 = storing, 2 = streaming
+} led_cmd_t;
 
 
 /****************************************************************************/
