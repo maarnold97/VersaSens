@@ -36,25 +36,7 @@ int main(void)
     versa_init();
     // enable_auto_connect();
     versa_config();
-    // const struct device *led_pwm;
 
-    // k_sleep(K_MSEC(5000));
-
-    // led_pwm = DEVICE_DT_GET(LED_PWM_NODE_ID);
-	// if (!device_is_ready(led_pwm)) {
-	// 	LOG_ERR("Device %s is not ready", led_pwm->name);
-	// }
-
-    // uint8_t i;
-    // while(1) {
-    //     for(i=0;i<3;i++) {
-    //         //led_set_brightness(led_pwm, i, 50);
-    //         led_on(led_pwm, i);
-    //         k_sleep(K_MSEC(1000));
-    //         led_off(led_pwm,i);
-    //         k_sleep(K_MSEC(1000));
-    //     }
-    // }
     versa_start_led_thread();
     versa_start_mode_thread();
 
@@ -62,35 +44,27 @@ int main(void)
 
     
 
-    // tlp0102_set_core_res(0, true);
-    // k_sleep(K_MSEC(1000));
-    // tlp0102_set_cgra_res(0, true);
-    // k_sleep(K_MSEC(1000));
-
-    // uint8_t data;
-
-    // tlp0102_read_reg(ACR_ADDRESS, &data);
-    // LOG_ERR("ACR_REG = 0x%02x", data);
 
 
     while (1)
     {
+        k_sleep(K_MSEC(1000));
         // data aquisition example
-        k_sleep(K_MSEC(10));
-        struct app_data_struct *data = k_malloc(sizeof(*data));
-        if (data == NULL)
-        {
-            LOG_ERR("Failed to allocate memory for new_data\n");
-        }
-        else
-        {
-            app_data_get_from_fifo(data);
-        }
         
-        if (data != NULL)
-        {
-            // LOG_INF("Data received from FIFO: %02hx", data->data[0]);
-            k_free(data);
-        }
+        // struct app_data_struct *data = k_malloc(sizeof(*data));
+        // if (data == NULL)
+        // {
+        //     LOG_ERR("Failed to allocate memory for new_data\n");
+        // }
+        // else
+        // {
+        //     app_data_get_from_fifo(data);
+        // }
+        
+        // if (data != NULL)
+        // {
+        //     // LOG_INF("Data received from FIFO: %02hx", data->data[0]);
+        //     k_free(data);
+        // }
     }
 }
