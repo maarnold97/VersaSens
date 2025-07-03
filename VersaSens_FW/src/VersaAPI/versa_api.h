@@ -75,18 +75,13 @@ Description : Original version.
 #define MODE_STORE_SELECT 0x10
 #define MODE_STREAM_SELECT 0x20
 
-typedef enum {
-    LED_CMD_SET_MODE_INDICATOR,
-    LED_CMD_TOGGLE_MODE,
-    LED_CMD_EXIT_MODE_SELECT,
-    LED_CMD_SYSTEM_STATUS, // for non-mode LED behavior
-} led_cmd_type_t;
 
-typedef struct {
-    led_cmd_type_t cmd;
-    uint32_t mode;      // 0 = idle, 1 = storing, 2 = streaming
-} led_cmd_t;
 
+typedef struct  {
+    uint32_t leds;
+    uint32_t toggle_period_ms;
+    uint32_t cycles;
+} led_command_t;
 
 /****************************************************************************/
 /**                                                                        **/
@@ -167,6 +162,8 @@ int enable_auto_connect(void);
  * @return int - status of the operation (0 for success, non-zero for failure)
  */
 int disable_auto_connect(void);
+
+void versa_set_mode(uint32_t new_mode);
 
 
 /****************************************************************************/

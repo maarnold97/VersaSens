@@ -36,22 +36,24 @@ int main(void)
     // enable_auto_connect();
     versa_config();
 
+    // k_sleep(K_MSEC(5000));
+
     versa_start_led_thread();
     versa_start_mode_thread();
 
     // SPI_Heepocrates_init();
 
-    k_sleep(K_MSEC(5000));
+    
 
-    tlp0102_set_core_res(0, true);
-    k_sleep(K_MSEC(1000));
-    tlp0102_set_cgra_res(0, true);
-    k_sleep(K_MSEC(1000));
+    // tlp0102_set_core_res(0, true);
+    // k_sleep(K_MSEC(1000));
+    // tlp0102_set_cgra_res(0, true);
+    // k_sleep(K_MSEC(1000));
 
-    uint8_t data;
+    // uint8_t data;
 
-    tlp0102_read_reg(ACR_ADDRESS, &data);
-    LOG_ERR("ACR_REG = 0x%02x", data);
+    // tlp0102_read_reg(ACR_ADDRESS, &data);
+    // LOG_ERR("ACR_REG = 0x%02x", data);
 
 
     while (1)
@@ -70,7 +72,7 @@ int main(void)
         
         if (data != NULL)
         {
-            LOG_INF("Data received from FIFO: %02hx", data->data[0]);
+            // LOG_INF("Data received from FIFO: %02hx", data->data[0]);
             k_free(data);
         }
     }
