@@ -49,6 +49,7 @@ Description : Original version.
 // #include "sdk_common.h"
 #include <zephyr/types.h>
 #include "twim_inst.h"
+#include "versa_tools.h"
 #include "pin_assignments.h"
 
 /****************************************************************************/
@@ -893,12 +894,20 @@ typedef struct {
 }__attribute__((packed)) MAX77658_FG_REG;
 
 /*! Format of the data to be stored in the flash */
+// typedef struct {
+//     int16_t header;
+//     int32_t time_s_bin;
+//     int16_t time_ms_bin;
+//     int8_t len;
+//     uint8_t index;
+//     uint16_t temperature;
+//     uint16_t voltage;
+//     uint16_t current;
+//     uint16_t soc;
+// } __attribute__((packed)) MAX77658_StorageFormat;
+
 typedef struct {
-    int16_t header;
-    int32_t time_s_bin;
-    int16_t time_ms_bin;
-    int8_t len;
-    uint8_t index;
+    sensorPacketMetadata_t metadata;
     uint16_t temperature;
     uint16_t voltage;
     uint16_t current;

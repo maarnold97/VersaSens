@@ -71,7 +71,7 @@ LOG_MODULE_REGISTER(MAX77658, LOG_LEVEL_INF);
 // MAX77658 storage format length
 #define MAX77658_STORAGE_LEN 9
 // MAX77658 storage format header
-#define MAX77658_STORAGE_HEADER 0x8888
+#define MAX77658_STORAGE_HEADER 0x8
 // MAX77658 mask for the charging flag bit
 #define MAX77658_CHARGING_BIT 0b00000010
 
@@ -590,8 +590,7 @@ static void MAX77658_handler(nrfx_twim_evt_t const * p_event, void * p_context)
 void max77658_thread_func(void *arg1, void *arg2, void *arg3)
 {
     // Initialize the MAX77658 storage format
-    MAX77658_Storage.header = MAX77658_STORAGE_HEADER;
-    uint8_t len = MAX77658_STORAGE_LEN;
+    MAX77658_Storage.metadata = init_sensor_packet_metadata_with_length(MAX77658_STORAGE_HEADER, MAX77658_STORAGE_LEN);
     uint8_t index = 0;
     uint16_t data_read[4];
     uint8_t data_read_8bit[1];
@@ -638,11 +637,7 @@ void max77658_thread_func(void *arg1, void *arg2, void *arg3)
 
         // Save the measurements
         if(MAX77658_cont_read){
-
-            MAX77658_Storage.time_s_bin = time_s_bin;
-            MAX77658_Storage.time_ms_bin = time_ms_bin;
-            MAX77658_Storage.len = len;
-            MAX77658_Storage.index = index++;
+            update_sensor_packet_metadata_without_length(&MAX77658_Storage.metadata, time_s_bin, time_ms_bin, index++);
             MAX77658_Storage.temperature = data_read[0];
             MAX77658_Storage.voltage = data_read[1];
             MAX77658_Storage.current = data_read[2];

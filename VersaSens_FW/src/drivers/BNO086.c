@@ -338,6 +338,7 @@ int bno086_init(void)
 
     LOG_INF("UARTE instance initialized\n");
 
+    bno_storage.metadata = init_sensor_packet_metadata_with_length(BNO_STORAGE_HEADER, BNO_STORAGE_LEN);
     return (status == NRFX_SUCCESS)? 0 : -1;
 }
 
@@ -375,8 +376,8 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
     nrfx_err_t status;
     nrfx_uarte_t * p_inst = &uarte_inst;
 
-    bno_storage.header = BNO_STORAGE_HEADER;
-    bno_storage.len = BNO_STORAGE_LEN;
+    // bno_storage.header = BNO_STORAGE_HEADER;
+    // bno_storage.len = BNO_STORAGE_LEN;
 
     uint8_t write_packet[BNO_STORAGE_LEN];
 
@@ -400,8 +401,9 @@ void bno086_save_thread_func(void *arg1, void *arg2, void *arg3)
         uint32_t rawtime_bin = current_time.rawtime_s_bin;
         uint16_t time_ms_bin = current_time.time_ms_bin;
 
-        bno_storage.rawtime_bin = rawtime_bin;
-        bno_storage.time_ms_bin = time_ms_bin;
+        // bno_storage.rawtime_bin = rawtime_bin;
+        // bno_storage.time_ms_bin = time_ms_bin;
+        update_sensor_packet_metadata_without_length(&bno_storage.metadata, rawtime_bin, time_ms_bin, 0);
 
         for (size_t i = 0; i < BNO_CONSEC_MEAS; i++)
         {

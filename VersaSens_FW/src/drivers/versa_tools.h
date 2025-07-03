@@ -4,7 +4,7 @@
 **                            *******************                          **
 **                                                                         **
 ** project  : VersaSens                                                        **
-** filename : BNO086.h                                                   **
+** filename : versa_tools.h                                                   **
 ** version  : 1                                                            **
 ** date     : DD/MM/21                                                     **
 **                                                                         **
@@ -29,16 +29,16 @@ Description : Original version.
 /***************************************************************************/
 
 /**
-* @file   BNO086.h
+* @file   versa_tools.h
 * @date   DD/MM/YY
-* @brief  This is the main header of BNO086.c
+* @brief  This is the main header of versa_tools.c
 *
 * Here typically goes a more extensive explanation of what the header
 * defines.
 */
 
-#ifndef _BNO086_H
-#define _BNO086_H
+#ifndef _VERSA_TOOLS_H
+#define _VERSA_TOOLS_H
 
 /****************************************************************************/
 /**                                                                        **/
@@ -46,10 +46,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-// #include "sdk_common.h"
 #include <zephyr/types.h>
-#include "versa_tools.h"
-#include "pin_assignments.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -57,65 +54,15 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-#define BNO086_RVC_MSG_LENGTH 19*10
-#define BNO086_RVC_RX_BUF_LENGTH BNO086_RVC_MSG_LENGTH
-
-#define BNO086_RVC_FRAME_PERIOD_MS	10
-
-#define IMU_HEADER_BYTE_0	0xaa
-#define IMU_PREFIX_BYTE		0xaa
-#define IMU_PREFIX_LENGTH	1
-#define IMU_FRAME_LENGTH	BNO086_RVC_MSG_LENGTH
-
-#define BNO_RST_N_Pin       RESET_OUT_N
-
-#define UARTE_INST_IDX      1
-#define UARTE_RX_PIN        UART_RX
-#define UARTE_TX_PIN        UART_TX
-
 /****************************************************************************/
 /**                                                                        **/
 /**                       TYPEDEFS AND STRUCTURES                          **/
 /**                                                                        **/
 /****************************************************************************/
 
-typedef union {
-    struct {
-        uint8_t header_lsb;
-        uint8_t header_msb;
-        uint8_t index;
-        uint8_t yaw_lsb;
-        uint8_t yaw_msb;
-        uint8_t pitch_lsb;
-        uint8_t pitch_msb;
-        uint8_t roll_lsb;
-        uint8_t roll_msb;
-        uint8_t acc_x_lsb;
-        uint8_t acc_x_msb;
-        uint8_t acc_y_lsb;
-        uint8_t acc_y_msb;
-        uint8_t acc_z_lsb;
-        uint8_t acc_z_msb;
-        uint8_t motion_intent;
-        uint8_t motion_request;
-        uint8_t rsvd;
-        uint8_t checksum;
-    } B;
-    uint8_t frame[19];
-}__attribute__((packed)) bno086_frame_t;
-
-// typedef struct {
-//     int16_t header;
-//     int32_t rawtime_bin;
-//     int16_t time_ms_bin;
-//     uint8_t len;
-//     uint8_t data[13*10];
-// } __attribute__((packed)) BNO086_StorageFormat;
-
 typedef struct {
-    sensorPacketMetadata_t metadata;
-    uint8_t data[13*10];
-} __attribute__((packed)) BNO086_StorageFormat;
+    uint8_t arr[5];
+} sensorPacketMetadata_t;
 
 
 /****************************************************************************/
@@ -124,11 +71,7 @@ typedef struct {
 /**                                                                        **/
 /****************************************************************************/
 
-#ifndef _BNO086_C_SRC
 
-
-
-#endif  /* _BNO086_C_SRC */
 
 /****************************************************************************/
 /**                                                                        **/
@@ -136,55 +79,13 @@ typedef struct {
 /**                                                                        **/
 /****************************************************************************/
 
-/**
- * @brief Initializes the BNO086 sensor.
- * 
- * @details This function initializes the UARTE peripheral for communication with the BNO086 sensor.
- *          It configures the UARTE instance, sets up the UARTE handler, and connects the UARTE interrupt.
- * 
- * @return 0 if initialization was successful, -1 otherwise.
- */
-int bno086_init(void);
+sensorPacketMetadata_t init_sensor_packet_metadata(uint8_t sensor_id);
+sensorPacketMetadata_t init_sensor_packet_metadata_with_length(uint8_t sensor_id, uint8_t length);
+void update_sensor_packet_metadata(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index, uint8_t length);
+void update_sensor_packet_metadata_without_length(sensorPacketMetadata_t* metadata, uint16_t time_s, uint16_t time_ms, uint8_t index);
 
-/**
- * @brief Resets the BNO086 sensor.
- * 
- * @details This function resets the BNO086 sensor by manipulating the reset pin.
- *          It first sets the reset pin to low, waits for 100 milliseconds, and then 
- *          sets the reset pin to high.
- */
-void bno086_reset(void);
 
-/**
- * @brief Starts the data stream from the BNO086 sensor.
- * 
- * @details This function starts the UARTE instance to receive data from the BNO086 sensor.
- *           The received data is stored in the `bno_frame` array. 
- *          
- * @return 0 if the UARTE instance is started successfully, -1 otherwise.
- */
-int bno086_start_stream(void);
 
-/**
- * @brief Stops the data stream from the BNO086 sensor.
- * 
- * @details Cancels any pending start operations and aborts the UARTE instance 
- *          receiving data from the BNO086 sensor. Logs the stop event.
- * 
- * @return 0 if the UARTE instance is stopped successfully, -1 otherwise.
- */
-int bno086_stop_stream(void);
-
-/**
- * @brief Finds the start of the frame in the BNO086 sensor data.
- * 
- * @details This function iterates over the `bno_frame` array and looks for two consecutive 
- *          bytes that match the `IMU_HEADER_BYTE_0`. This byte sequence indicates the start 
- *          of a frame in the BNO086 sensor data.
- * 
- * @return The index of the first byte of the frame start sequence if found, -1 otherwise.
- */
-int bno086_find_frame_start(void);
 
 
 /****************************************************************************/
@@ -195,7 +96,7 @@ int bno086_find_frame_start(void);
 
 
 
-#endif /* _BNO086_H */
+#endif /* _VERSA_TOOLS_H */
 /****************************************************************************/
 /**                                                                        **/
 /**                                EOF                                     **/

@@ -4,7 +4,7 @@
 **                            *******************                          **
 **                                                                         **
 ** project  : VersaSens                                                    **
-** filename : app_data.c                                                   **
+** filename : BNO086.c                                                     **
 ** version  : 1                                                            **
 ** date     : DD/MM/YY                                                     **
 **                                                                         **
@@ -29,15 +29,15 @@ Description : Original version.
 /***************************************************************************/
 
 /**
-* @file   app_data.c
+* @file   BNO086.c
 * @date   DD/MM/YY
-* @brief  This is the main header of app_data.c
+* @brief  This is the main header of BNO086.c
 *
 * Here typically goes a more extensive explanation of what the header
 * defines.
 */
 
-#define _APP_DATA_C_SRC
+#define _BNO086_C_SRC
 
 /****************************************************************************/
 /**                                                                        **/
@@ -46,9 +46,18 @@ Description : Original version.
 /****************************************************************************/
 
 #include <stdlib.h>
-#include "app_data.h"
+#include "BNO086.h"
+#include <nrfx_uarte.h>
+#include <nrfx_gpiote.h>
+#include <zephyr/types.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include "storage.h"
+#include "versa_time.h"
+#include "versa_ble.h"
+#include "SPI_Heepocrates.h"
+#include "versa_config.h"
+#include "app_data.h"
 
 /****************************************************************************/
 /**                                                                        **/
@@ -56,9 +65,7 @@ Description : Original version.
 /**                                                                        **/
 /****************************************************************************/
 
-LOG_MODULE_REGISTER(app_data, LOG_LEVEL_INF);
-
-#define APP_DATA_FIFO_MAX_SIZE 10
+LOG_MODULE_REGISTER(leds, LOG_LEVEL_INF);
 
 /****************************************************************************/
 /**                                                                        **/
@@ -72,6 +79,7 @@ LOG_MODULE_REGISTER(app_data, LOG_LEVEL_INF);
 /**                                                                        **/
 /****************************************************************************/
 
+
 /****************************************************************************/
 /**                                                                        **/
 /*                           EXPORTED VARIABLES                             */
@@ -84,9 +92,10 @@ LOG_MODULE_REGISTER(app_data, LOG_LEVEL_INF);
 /**                                                                        **/
 /****************************************************************************/
 
-K_FIFO_DEFINE(app_data_fifo);
+/*! Work item to start the BNO086 sensor after a delay */
+// K_WORK_DEFINE(idle_leds, work_handler_bno086_delayed_start);
 
-uint8_t app_data_fifo_counter = 0;
+
 
 /****************************************************************************/
 /**                                                                        **/
@@ -94,51 +103,18 @@ uint8_t app_data_fifo_counter = 0;
 /**                                                                        **/
 /****************************************************************************/
 
-void app_data_add_to_fifo(uint8_t *data, size_t size)
-{
-    if (app_data_fifo_counter >= APP_DATA_FIFO_MAX_SIZE)
-    {
-        LOG_ERR("APP DATA FIFO FULL\n");
-        return;
-    }
+void init_leds(void) {
 
-    // Allocate a new sensor data
-	struct app_data_struct *new_data = k_malloc(sizeof(*new_data));
-
-    if (new_data == NULL)
-    {
-        LOG_ERR("Failed to allocate memory for new_data\n");
-        return;
-    }
-
-	// Set the sensor data
-	new_data->size = size < MAX_DATA_SIZE_APP_DATA ? size : MAX_DATA_SIZE_APP_DATA;
-	memcpy(new_data->data, data, new_data->size);
-
-	// Put the sensor data in the FIFO
-	k_fifo_put(&app_data_fifo, new_data);
-    app_data_fifo_counter++;
 }
 
-/****************************************************************************/
-/****************************************************************************/
-
-void app_data_get_from_fifo(struct app_data_struct *data)
-{
-    struct app_data *p_data = k_fifo_get(&app_data_fifo, K_NO_WAIT);
-    if (p_data != NULL)
-    {
-        memcpy(data, p_data, sizeof(*data));
-        k_free(p_data);
-        app_data_fifo_counter--;
-    }
-}
 
 /****************************************************************************/
 /**                                                                        **/
 /*                            LOCAL FUNCTIONS                               */
 /**                                                                        **/
 /****************************************************************************/
+
+
 
 /****************************************************************************/
 /**                                                                        **/
