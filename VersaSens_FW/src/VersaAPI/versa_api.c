@@ -76,7 +76,7 @@ Description : Original version.
 #include <zephyr/fs/fs.h>
 #include <ff.h>
 
-LOG_MODULE_REGISTER(versa_api, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(versa_api, LOG_LEVEL_INF);
 
 /****************************************************************************/
 /**                                                                        **/
