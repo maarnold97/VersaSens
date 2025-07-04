@@ -221,14 +221,14 @@ int versa_init(void)
     int ret;
 
     // Initialize the BLE
-    //start_ble();
+    start_ble();
     // Initialize the I2C instance
     twim_inst_init();
     // Initialize the MAX77658
     MAX77658_init();
     tlp0102_init();
     // Initialize the storage
-    //storage_init();
+    storage_init();
     k_sleep(K_MSEC(500));
 
     enable_3v3_peripherals();
